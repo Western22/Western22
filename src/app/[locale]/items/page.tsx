@@ -46,7 +46,7 @@ async function MyItems({ locale, t }: { locale: Locale; t: Messages }) {
   return (
     <ul className="flex flex-col gap-3">
       {items.map((item: ItemRowData) => (
-        <ItemRow key={item.id} item={item} locale={locale} t={{ items: t.items, errors: t.errors }} />
+        <ItemRow key={item.id} item={item} locale={locale} t={{ items: t.items, errors: t.errors, findBuddies: t.matches.findBuddies }} />
       ))}
     </ul>
   );

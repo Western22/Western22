@@ -47,6 +47,7 @@ export type BucketBudget = "under_500" | "500_2000" | "2000_5000" | "over_5000";
 export type GoalStatus = "pending" | "active" | "merged" | "rejected";
 /** How add_bucket_item() linked the item to a goal. */
 export type GoalMatch = "chosen" | "exact" | "fuzzy" | "new";
+export type MatchRequestStatus = "pending" | "accepted" | "declined" | "cancelled";
 
 /** Browsable categories, in display order ("other" holds unreviewed goals). */
 export const GOAL_CATEGORIES: readonly GoalCategory[] = [
@@ -219,6 +220,31 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      // Writes go through block_user / unblock_user; you can only read your own blocks.
+      blocks: {
+        Row: { blocker_id: string; blocked_id: string; created_at: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      // Writes go through send_match_request / respond_match_request.
+      match_requests: {
+        Row: {
+          id: string;
+          goal_id: string;
+          sender_id: string;
+          recipient_id: string;
+          sender_item_id: string | null;
+          recipient_item_id: string | null;
+          note: string | null;
+          status: MatchRequestStatus;
+          created_at: string;
+          responded_at: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -293,6 +319,59 @@ export type Database = {
         Args: { p_goal_id: string };
         Returns: { wanted_count: number; done_count: number; recent_count: number }[];
       };
+      find_matches: {
+        Args: { p_item_id: string; p_config?: Json; p_limit?: number };
+        Returns: {
+          profile_id: string;
+          username: string | null;
+          display_name: string | null;
+          avatar_url: string | null;
+          home_city: string | null;
+          home_country: string | null;
+          their_item_id: string;
+          their_timeframe: BucketTimeframe;
+          their_budget: BucketBudget | null;
+          score: number;
+          timeframe_score: number;
+          distance_score: number;
+          language_score: number;
+          style_score: number;
+          budget_score: number;
+          recency_score: number;
+          /** Rounded; 25 means "under 25 km". Null when either person has no location. */
+          distance_km: number | null;
+          is_worldwide: boolean;
+          shared_languages: string[];
+          shared_styles: string[];
+          active_within: "week" | "month" | "older";
+          request_id: string | null;
+          request_status: MatchRequestStatus | null;
+          request_direction: "sent" | "received" | null;
+        }[];
+      };
+      send_match_request: {
+        Args: { p_my_item_id: string; p_their_item_id: string; p_note?: string | null };
+        Returns: string;
+      };
+      respond_match_request: { Args: { p_request_id: string; p_accept: boolean }; Returns: undefined };
+      my_match_requests: {
+        Args: { p_locale?: string };
+        Returns: {
+          id: string;
+          direction: "sent" | "received";
+          status: MatchRequestStatus;
+          note: string | null;
+          created_at: string;
+          goal_slug: string;
+          goal_title: string;
+          other_id: string;
+          other_username: string | null;
+          other_display_name: string | null;
+          other_avatar_url: string | null;
+        }[];
+      };
+      block_user: { Args: { p_user_id: string }; Returns: undefined };
+      unblock_user: { Args: { p_user_id: string }; Returns: undefined };
       are_buddies: { Args: { a: string; b: string }; Returns: boolean };
       goal_title: { Args: { p_goal_id: string; p_locale: string }; Returns: string };
       profile_stats: {
@@ -310,3 +389,5 @@ export type BucketItem = BucketItemRow;
 export type GoalSuggestion = Database["public"]["Functions"]["search_goals"]["Returns"][number];
 export type ExploreGoal = Database["public"]["Functions"]["explore_goals"]["Returns"][number];
 export type GoalDetails = Database["public"]["Functions"]["goal_details"]["Returns"][number];
+export type Match = Database["public"]["Functions"]["find_matches"]["Returns"][number];
+export type MatchRequest = Database["public"]["Functions"]["my_match_requests"]["Returns"][number];

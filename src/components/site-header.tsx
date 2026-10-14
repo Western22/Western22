@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth";
 import { signOut } from "@/lib/actions/auth";
+import { createClient } from "@/lib/supabase/server";
+import { format } from "@/i18n/format";
 import type { Locale } from "@/i18n/config";
 import type { Messages } from "@/i18n/messages/en";
 
@@ -44,10 +47,34 @@ async function UserNav({ locale, t }: { locale: Locale; t: Messages }) {
     );
   }
 
+  // Pending requests waiting for this user (RLS: only requests they are part of).
+  // TODO(notifications): email or push for new requests; for now this badge is the only signal.
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("match_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("recipient_id", user.id)
+    .eq("status", "pending");
+  const pending = count ?? 0;
+  const requestsLabel = pending > 0 ? `${t.nav.requests}, ${format(t.nav.requestsPending, { count: pending })}` : t.nav.requests;
+
   return (
     <>
       <Button asChild variant="ghost" size="sm">
         <Link href={`/${locale}/items`}>{t.nav.myList}</Link>
+      </Button>
+      <Button asChild variant="ghost" size="sm" className="relative">
+        <Link href={`/${locale}/requests`} aria-label={requestsLabel} title={t.nav.requests}>
+          <Inbox aria-hidden />
+          {pending > 0 && (
+            <span
+              aria-hidden
+              className="bg-primary text-primary-foreground absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold"
+            >
+              {pending > 9 ? "9+" : pending}
+            </span>
+          )}
+        </Link>
       </Button>
       <Button asChild variant="ghost" size="sm">
         <Link href={`/${locale}/profile`}>{t.nav.profile}</Link>

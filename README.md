@@ -15,6 +15,14 @@ badges.
 (exact, then trigram fuzzy match, else a new goal pending review), item details
 (timeframe, flexibility, budget, status, public / buddies / private), goal pages,
 Explore (category, region, season, trending, near me) and 212 seeded goals.
+
+**Increment 4 (matching):** for any item, a ranked list of people who share the
+canonical goal, scored in Postgres (`find_matches`) on timeframe, distance (or
+"worldwide" for far-away places), shared languages, travel style, budget and
+recent activity, with reason chips. "Let's do this together" requests with a
+short note, a requests inbox (accepting makes you buddies), and blocking.
+Weights live in `src/lib/matching/config.ts`.
+
 Every table has Row Level Security.
 
 ## Stack
@@ -54,9 +62,11 @@ recorded on the profile when the OAuth callback lands in `/auth/confirm`.
 ```bash
 npx tsc --noEmit && npm run lint && npm run build
 psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/tests/rls_test.sql
+psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/tests/matching_test.sql
 ```
 
-The RLS test runs in a transaction, rolls back, and prints `ALL RLS CHECKS PASSED`.
+Each test runs in a transaction, rolls back, and prints `ALL RLS CHECKS PASSED` or
+`ALL MATCHING CHECKS PASSED`.
 
 ## Deploying to a hosted Supabase project
 
@@ -79,20 +89,26 @@ src/
     u/[username]/          public profile: bio, languages, stats, badges, active list
     profile/               edit profile + private "use my location"
     items/                 my bucket list (add from free text, edit details, delete)
+    items/[itemId]/matches ranked buddies for one item, with "Let's do this together"
+    requests/              requests inbox: waiting for you, doing it together, sent
     goals/[slug]/          goal page: description, counts, best time, add button
     explore/               browse goals: category, region, season, trending, near me
   app/auth/confirm/        handles links from Supabase auth emails
   lib/actions/             Server Actions (validated with zod, protected by RLS)
   lib/auth.ts              data access layer: getCurrentUser, requireOnboardedProfile (verifies JWT)
   lib/badges.ts            badge rules, computed from profile stats
+  lib/matching/config.ts   matching weights and tuning values (the one place to tune)
+  lib/matching/reasons.ts  reason chips ("Both aiming for 2027", "Speaks Spanish")
   components/              goal-search (typeahead over canonical goals), chip-picker
   lib/supabase/            server, browser and proxy clients + database types
 supabase/
   migrations/              0001 profiles + private location, 0002 bucket items,
                            0003 onboarding fields, goals, avatars bucket, moderators,
                            0004 item details, fuzzy matching, follows, explore/goal RPCs,
-                           0005 seed of 212 goals
+                           0005 seed of 212 goals,
+                           0006 matching: find_matches, match requests, blocks
   tests/rls_test.sql       RLS checks (two users + anonymous)
+  tests/matching_test.sql  matching, requests and blocking checks
 ```
 
 ## Privacy rules (enforced in the database)
@@ -111,6 +127,11 @@ supabase/
   onboarding can't complete without the 18+ confirmation.
 - Bucket items are public, buddies-only (mutual follows, via `are_buddies()`)
   or private (owner only). Goal counts include every item but never say whose.
+- Matching only uses public items (or buddies-only items of buddies), never private
+  ones, skips anyone blocked in either direction, and returns distances rounded
+  (under 25 km, then to 10, 50 or 100 km). Coordinates never leave the database.
+- Match requests and blocks are written only through RPCs. Each side of a request
+  can read it; only the blocker can see a block.
 - All timestamps are `timestamptz` (UTC). `target_date` is a calendar date with no time.
 
 ## Adding a language
@@ -126,6 +147,8 @@ typed as `Messages`, and register it in `src/i18n/get-messages.ts`.
 - `TODO(age-gate)`: delete accounts that never confirm 18+ (needs a service-role job).
 - `TODO(badges)`: persist awarded badges once notifications need them.
 - `TODO(follows)`: follow/unfollow UI (until then, buddies-only items are visible only to you).
+- `TODO(groups)`: accepting a match request makes you buddies; it should also start a group once groups exist.
+- `TODO(notifications)`: new requests show as a badge on the header inbox; no email or push yet.
 - `TODO(stories)`, `TODO(groups)`: goal pages show empty states until posts and groups exist.
 - `TODO(goal-photos)`: seeded goals use category artwork; add licensed photos with credits.
 - `TODO(feed)`: paginate Explore.

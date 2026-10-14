@@ -13,6 +13,7 @@ import { isLocale } from "@/i18n/config";
 import { getMessages } from "@/i18n/get-messages";
 import { format } from "@/i18n/format";
 import { cn } from "@/lib/utils";
+import { BlockButton } from "./block-button";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/u/[username]">): Promise<Metadata> {
   const { username } = await params;
@@ -63,6 +64,13 @@ async function PublicProfile({ params }: { params: PageProps<"/[locale]/u/[usern
   ]);
   if (stats.error || items.error) throw new Error("Could not load profile");
 
+  // RLS only returns the viewer's own blocks, so this never reveals who blocked whom otherwise.
+  let blocked = false;
+  if (viewer && viewer.id !== profile.id) {
+    const { data } = await supabase.from("blocks").select("blocked_id").eq("blocked_id", profile.id).maybeSingle();
+    blocked = Boolean(data);
+  }
+
   const completedCount = Number(stats.data[0]?.completed_count ?? 0);
   const activeCount = Number(stats.data[0]?.active_count ?? 0);
   const badges = earnedBadges({ activeCount, completedCount, languageCount: profile.languages.length });
@@ -107,6 +115,14 @@ async function PublicProfile({ params }: { params: PageProps<"/[locale]/u/[usern
           <Button asChild variant="outline" size="sm" className="bg-background/80">
             <Link href={`/${locale}/profile`}>{p.editProfile}</Link>
           </Button>
+        )}
+        {blocked && <p className="text-muted-foreground text-sm">{p.blocked}</p>}
+        {viewer && viewer.id !== profile.id && (
+          <BlockButton
+            userId={profile.id}
+            blocked={blocked}
+            t={{ block: p.block, unblock: p.unblock, confirm: format(p.blockConfirm, { name }) }}
+          />
         )}
       </section>
 

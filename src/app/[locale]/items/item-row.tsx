@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import { ChevronDown, Lock, Trash2, Users } from "lucide-react";
+import { ChevronDown, Lock, Trash2, UserRoundSearch, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -25,10 +25,12 @@ const STATUS_STYLE: Record<BucketItem["status"], string> = {
 };
 
 /** One of the owner's items: summary chips, an editable details panel, and delete. */
-export function ItemRow({ item, locale, t }: { item: ItemRowData; locale: string; t: Pick<Messages, "items" | "errors"> }) {
+export function ItemRow({ item, locale, t }: { item: ItemRowData; locale: string; t: Pick<Messages, "items" | "errors"> & { findBuddies: string } }) {
   const [state, action, pending] = useActionState<FormState, FormData>(updateItem, {});
   const done = item.status === "done";
   const it = t.items;
+  // Matching needs a live goal other people can share; done items aren't matched.
+  const canMatch = !done && (item.goal?.status === "active" || item.goal?.status === "merged");
 
   return (
     <li className="rounded-xl border p-4">
@@ -64,7 +66,8 @@ export function ItemRow({ item, locale, t }: { item: ItemRowData; locale: string
         </form>
       </div>
 
-      <details className="group mt-2">
+      <div className="mt-2 flex items-start gap-3">
+      <details className="group min-w-0 flex-1">
         <summary className="text-muted-foreground flex cursor-pointer list-none items-center gap-1 text-sm font-medium">
           <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
           {it.details}
@@ -95,6 +98,16 @@ export function ItemRow({ item, locale, t }: { item: ItemRowData; locale: string
           </div>
         </form>
       </details>
+        {canMatch && (
+          <Link
+            href={`/${locale}/items/${item.id}/matches`}
+            className="text-primary flex shrink-0 items-center gap-1 text-sm font-medium underline-offset-4 hover:underline"
+          >
+            <UserRoundSearch className="size-4" aria-hidden />
+            {t.findBuddies}
+          </Link>
+        )}
+      </div>
     </li>
   );
 }

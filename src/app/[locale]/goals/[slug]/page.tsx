@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { CalendarDays, Check, MapPin, MessageSquareText, UsersRound } from "lucide-react";
+import { CalendarDays, Check, MapPin, MessageSquareText, UserRoundSearch, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GoalArt } from "@/components/goal-art";
 import { getCurrentUser } from "@/lib/auth";
@@ -109,14 +109,24 @@ async function Goal({ params }: { params: PageProps<"/[locale]/goals/[slug]">["p
         <span className="font-medium">{g.bestTime}:</span> {months || g.anyTime}
       </p>
 
-      <div>
+      <div className="flex flex-wrap gap-2">
         {goal.my_item_id ? (
-          <Button asChild size="lg" variant="outline">
-            <Link href={`/${locale}/items`}>
-              <Check aria-hidden />
-              {g.onYourList}
-            </Link>
-          </Button>
+          <>
+            <Button asChild size="lg" variant="outline">
+              <Link href={`/${locale}/items`}>
+                <Check aria-hidden />
+                {g.onYourList}
+              </Link>
+            </Button>
+            {goal.status === "active" && (
+              <Button asChild size="lg">
+                <Link href={`/${locale}/items/${goal.my_item_id}/matches`}>
+                  <UserRoundSearch aria-hidden />
+                  {g.findBuddies}
+                </Link>
+              </Button>
+            )}
+          </>
         ) : user ? (
           <AddGoalButton goalId={goal.goal_id} title={goal.title} locale={locale} t={{ label: g.addToList, errors: t.errors }} />
         ) : (
