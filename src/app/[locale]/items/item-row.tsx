@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import { ChevronDown, Lock, Trash2, UserRoundSearch, Users } from "lucide-react";
+import { BookOpen, ChevronDown, Lock, Trash2, UserRoundSearch, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -25,7 +25,7 @@ const STATUS_STYLE: Record<BucketItem["status"], string> = {
 };
 
 /** One of the owner's items: summary chips, an editable details panel, and delete. */
-export function ItemRow({ item, locale, t }: { item: ItemRowData; locale: string; t: Pick<Messages, "items" | "errors"> & { findBuddies: string } }) {
+export function ItemRow({ item, locale, t }: { item: ItemRowData; locale: string; t: Pick<Messages, "items" | "errors"> & { findBuddies: string; shareStory: string } }) {
   const [state, action, pending] = useActionState<FormState, FormData>(updateItem, {});
   const done = item.status === "done";
   const it = t.items;
@@ -98,6 +98,15 @@ export function ItemRow({ item, locale, t }: { item: ItemRowData; locale: string
           </div>
         </form>
       </details>
+        {done && item.goal?.status === "active" && (
+          <Link
+            href={`/${locale}/stories/new?goal=${item.goal.slug}`}
+            className="text-primary flex shrink-0 items-center gap-1 text-sm font-medium underline-offset-4 hover:underline"
+          >
+            <BookOpen className="size-4" aria-hidden />
+            {t.shareStory}
+          </Link>
+        )}
         {canMatch && (
           <Link
             href={`/${locale}/items/${item.id}/matches`}

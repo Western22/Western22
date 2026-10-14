@@ -242,14 +242,12 @@ select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000
 do $$
 declare g uuid := (select v from ids where k = 'group');
 begin
-  insert into public.stories (goal_id, group_id, body)
-  values ((select goal_id from public.groups where id = g), g, 'We made it to Uhuru Peak!');
+  perform public.create_story((select goal_id from public.groups where id = g), 'We made it to Uhuru Peak!', g);
   assert not (select story_prompt from public.my_groups()), 'posting a story clears the prompt';
   begin
-    insert into public.stories (goal_id, body, photo_url)
-    values ((select goal_id from public.groups where id = g), 'x', 'https://evil.example/photo.jpg');
+    perform public.create_story((select goal_id from public.groups where id = g), 'x', null, null, array['https://evil.example/photo.jpg']);
     raise exception 'foreign photo url accepted';
-  exception when insufficient_privilege then null;
+  exception when invalid_parameter_value then null;
   end;
   begin
     perform public.join_group(g);  -- already a member: fine

@@ -52,6 +52,20 @@ export type GroupStatus = "forming" | "planning" | "confirmed" | "completed";
 export type GroupJoinPolicy = "open" | "request";
 export type ChecklistCategory = "visa" | "gear" | "booking" | "other";
 export type ReportReason = "spam" | "harassment" | "inappropriate" | "other";
+export type ReactionKind = "love" | "fire" | "inspired" | "congrats";
+export type FeedReason = "follow" | "group" | "on_list" | "new_group" | "trending";
+export type BadgeSlug =
+  | "first_dream"
+  | "big_dreamer"
+  | "doer"
+  | "unstoppable"
+  | "first_group"
+  | "team_player"
+  | "storyteller"
+  | "globetrotter"
+  | "polyglot";
+
+export const REACTION_KINDS: readonly ReactionKind[] = ["love", "fire", "inspired", "congrats"];
 
 export const GROUP_STATUSES: readonly GroupStatus[] = ["forming", "planning", "confirmed", "completed"];
 export const CHECKLIST_CATEGORIES: readonly ChecklistCategory[] = ["visa", "gear", "booking", "other"];
@@ -145,6 +159,8 @@ type BucketItemRow = {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  /** The story that inspired this item ("Add to my bucket list" on a story). */
+  source_story_id: string | null;
 };
 
 export type Database = {
@@ -343,6 +359,7 @@ export type Database = {
         Update: never;
         Relationships: [{ foreignKeyName: "group_messages_sender_id_fkey"; columns: ["sender_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }];
       };
+      // Written through create_story().
       stories: {
         Row: {
           id: string;
@@ -350,12 +367,37 @@ export type Database = {
           goal_id: string;
           group_id: string | null;
           body: string;
-          photo_url: string | null;
+          place: string | null;
+          photo_urls: string[];
           created_at: string;
         };
-        Insert: { goal_id: string; group_id?: string | null; body: string; photo_url?: string | null };
+        Insert: never;
         Update: never;
         Relationships: [{ foreignKeyName: "stories_author_id_fkey"; columns: ["author_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }];
+      };
+      story_tags: {
+        Row: { story_id: string; user_id: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      story_reactions: {
+        Row: { story_id: string; user_id: string; kind: ReactionKind; created_at: string };
+        Insert: { story_id: string; kind: ReactionKind };
+        Update: never;
+        Relationships: [];
+      };
+      story_comments: {
+        Row: { id: string; story_id: string; author_id: string; body: string; created_at: string };
+        Insert: { story_id: string; body: string };
+        Update: never;
+        Relationships: [{ foreignKeyName: "story_comments_author_id_fkey"; columns: ["author_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }];
+      };
+      user_badges: {
+        Row: { user_id: string; badge: BadgeSlug; seen_at: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
       };
       // Writes go through send_match_request / respond_match_request.
       match_requests: {
@@ -555,6 +597,63 @@ export type Database = {
           pending_requests: number;
         }[];
       };
+      follow_counts: {
+        Args: { p_profile_id: string };
+        Returns: { followers: number; following: number; i_follow: boolean }[];
+      };
+      add_goal_from_story: { Args: { p_story_id: string }; Returns: string };
+      create_story: {
+        Args: {
+          p_goal_id: string;
+          p_body: string;
+          p_group_id?: string | null;
+          p_place?: string | null;
+          p_photo_urls?: string[];
+          p_tagged?: string[];
+        };
+        Returns: string;
+      };
+      story_cards: {
+        Args: { p_ids: string[]; p_locale?: string };
+        Returns: {
+          id: string;
+          body: string;
+          place: string | null;
+          photo_urls: string[];
+          created_at: string;
+          author_id: string;
+          author_username: string | null;
+          author_display_name: string | null;
+          author_avatar_url: string | null;
+          goal_id: string;
+          goal_slug: string;
+          goal_title: string;
+          group_id: string | null;
+          group_name: string | null;
+          tagged: { username: string | null; name: string | null }[];
+          reactions: Partial<Record<ReactionKind, number>>;
+          my_reactions: ReactionKind[];
+          comment_count: number;
+          inspired_count: number;
+          on_my_list: boolean;
+        }[];
+      };
+      home_feed: {
+        Args: { p_config?: Json; p_limit?: number };
+        Returns: {
+          kind: "story" | "new_group" | "trending_goal";
+          score: number;
+          reason: FeedReason;
+          reason_label: string | null;
+          story_id: string | null;
+          group_id: string | null;
+          goal_id: string | null;
+          trending_count: number | null;
+        }[];
+      };
+      badges_for: { Args: { p_profile_id: string }; Returns: { badge: BadgeSlug }[] };
+      new_badges: { Args: Record<string, never>; Returns: { badge: BadgeSlug }[] };
+      mark_badges_seen: { Args: Record<string, never>; Returns: undefined };
       are_buddies: { Args: { a: string; b: string }; Returns: boolean };
       goal_title: { Args: { p_goal_id: string; p_locale: string }; Returns: string };
       profile_stats: {
@@ -577,3 +676,5 @@ export type MatchRequest = Database["public"]["Functions"]["my_match_requests"][
 export type GoalGroup = Database["public"]["Functions"]["goal_groups"]["Returns"][number];
 export type MyGroup = Database["public"]["Functions"]["my_groups"]["Returns"][number];
 export type GroupMessage = Database["public"]["Tables"]["group_messages"]["Row"];
+export type StoryCard = Database["public"]["Functions"]["story_cards"]["Returns"][number];
+export type FeedItem = Database["public"]["Functions"]["home_feed"]["Returns"][number];

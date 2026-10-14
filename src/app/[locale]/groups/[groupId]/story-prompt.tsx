@@ -18,7 +18,7 @@ export function StoryPrompt({ ctx, locale, t }: { ctx: GroupContext; locale: Loc
       </p>
       <div className="flex gap-2">
         <Button asChild size="sm">
-          <Link href={`/${locale}/groups/${ctx.id}?tab=memories`}>{g.writeStory}</Link>
+          <Link href={`/${locale}/stories/new?goal=${ctx.goalSlug}&group=${ctx.id}`}>{g.writeStory}</Link>
         </Button>
         <form action={dismissStoryPrompt.bind(null, ctx.id)}>
           <Button type="submit" size="sm" variant="ghost">

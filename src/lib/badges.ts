@@ -1,32 +1,40 @@
+import type { BadgeSlug } from "@/lib/supabase/database.types";
+
 /**
- * Badges are derived from profile stats on each view, so they're always
- * consistent with the data.
- * TODO(badges): persist awarded badges (with awarded_at) once we need
- * notifications or badges that can't be recomputed from current data.
+ * Badges are computed in the database by badges_for() from public data, so
+ * they're always true. The owner's user_badges rows only remember which
+ * badges have already been celebrated, so each milestone is shown once.
+ * Rules (see supabase/migrations/20261014000008_social.sql):
+ *   first_dream 1+ goal · big_dreamer 10+ goals · doer 1+ done · unstoppable 5+ done
+ *   first_group joined a group · team_player completed a goal with a group
+ *   storyteller posted a story · globetrotter done goals in 5+ countries · polyglot 3+ languages
  */
-
-export const BADGES = ["first_dream", "big_dreamer", "doer", "unstoppable", "polyglot"] as const;
-export type Badge = (typeof BADGES)[number];
-
-export type BadgeInput = { activeCount: number; completedCount: number; languageCount: number };
-
-const RULES: Record<Badge, (s: BadgeInput) => boolean> = {
-  first_dream: (s) => s.activeCount + s.completedCount >= 1,
-  big_dreamer: (s) => s.activeCount + s.completedCount >= 10,
-  doer: (s) => s.completedCount >= 1,
-  unstoppable: (s) => s.completedCount >= 5,
-  polyglot: (s) => s.languageCount >= 3,
-};
+export const BADGES: readonly BadgeSlug[] = [
+  "first_dream",
+  "big_dreamer",
+  "doer",
+  "unstoppable",
+  "first_group",
+  "team_player",
+  "storyteller",
+  "globetrotter",
+  "polyglot",
+];
 
 /** Decorative emoji per badge (not translated). */
-export const BADGE_EMOJI: Record<Badge, string> = {
+export const BADGE_EMOJI: Record<BadgeSlug, string> = {
   first_dream: "🌱",
   big_dreamer: "🌠",
   doer: "✅",
   unstoppable: "🔥",
+  first_group: "🤝",
+  team_player: "🏔️",
+  storyteller: "📖",
+  globetrotter: "🌍",
   polyglot: "🗣️",
 };
 
-export function earnedBadges(stats: BadgeInput): Badge[] {
-  return BADGES.filter((badge) => RULES[badge](stats));
+/** Badges in display order. */
+export function sortBadges(badges: BadgeSlug[]): BadgeSlug[] {
+  return BADGES.filter((b) => badges.includes(b));
 }

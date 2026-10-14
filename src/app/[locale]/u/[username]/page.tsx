@@ -6,7 +6,9 @@ import { MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { BADGE_EMOJI, earnedBadges } from "@/lib/badges";
+import { BADGE_EMOJI, sortBadges } from "@/lib/badges";
+import { loadStoryCards } from "@/lib/stories";
+import { StoryCard } from "@/components/stories/story-card";
 import { languageName } from "@/lib/onboarding";
 import { usernameSchema } from "@/lib/validation";
 import { isLocale } from "@/i18n/config";
@@ -14,6 +16,7 @@ import { getMessages } from "@/i18n/get-messages";
 import { format } from "@/i18n/format";
 import { cn } from "@/lib/utils";
 import { BlockButton } from "./block-button";
+import { FollowButton } from "./follow-button";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/u/[username]">): Promise<Metadata> {
   const { username } = await params;
@@ -73,7 +76,14 @@ async function PublicProfile({ params }: { params: PageProps<"/[locale]/u/[usern
 
   const completedCount = Number(stats.data[0]?.completed_count ?? 0);
   const activeCount = Number(stats.data[0]?.active_count ?? 0);
-  const badges = earnedBadges({ activeCount, completedCount, languageCount: profile.languages.length });
+  const [{ data: badgeRows }, { data: counts }, { data: storyRows }] = await Promise.all([
+    supabase.rpc("badges_for", { p_profile_id: profile.id }),
+    supabase.rpc("follow_counts", { p_profile_id: profile.id }),
+    supabase.from("stories").select("id").eq("author_id", profile.id).order("created_at", { ascending: false }).limit(20),
+  ]);
+  const badges = sortBadges((badgeRows ?? []).map((b) => b.badge));
+  const followCounts = counts?.[0] ?? { followers: 0, following: 0, i_follow: false };
+  const stories = await loadStoryCards(supabase, (storyRows ?? []).map((r) => r.id), locale);
   const name = profile.display_name || `@${profile.username}`;
   const place = [profile.home_city, profile.home_country].filter(Boolean).join(", ");
   const p = t.publicProfile;
@@ -115,6 +125,17 @@ async function PublicProfile({ params }: { params: PageProps<"/[locale]/u/[usern
           <Button asChild variant="outline" size="sm" className="bg-background/80">
             <Link href={`/${locale}/profile`}>{p.editProfile}</Link>
           </Button>
+        )}
+        <p className="text-muted-foreground text-sm">
+          {p.followers} <span className="text-foreground font-semibold">{followCounts.followers}</span> ·{" "}
+          {p.followingCount} <span className="text-foreground font-semibold">{followCounts.following}</span>
+        </p>
+        {viewer && viewer.id !== profile.id && !blocked && (
+          <FollowButton
+            userId={profile.id}
+            following={followCounts.i_follow}
+            t={{ follow: p.follow, following: p.following, unfollow: p.unfollow }}
+          />
         )}
         {blocked && <p className="text-muted-foreground text-sm">{p.blocked}</p>}
         {viewer && viewer.id !== profile.id && (
@@ -164,6 +185,21 @@ async function PublicProfile({ params }: { params: PageProps<"/[locale]/u/[usern
                   <span className="text-sm font-semibold">{t.badges[badge].name}</span>
                   <span className="text-muted-foreground text-xs">{t.badges[badge].description}</span>
                 </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">{p.stories}</h2>
+        {stories.length === 0 ? (
+          <p className="text-muted-foreground text-sm">{p.noStories}</p>
+        ) : (
+          <ul className="flex flex-col gap-4">
+            {stories.map((story) => (
+              <li key={story.id}>
+                <StoryCard story={story} locale={locale} t={t} viewerId={viewer?.id ?? null} />
               </li>
             ))}
           </ul>

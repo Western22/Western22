@@ -1,9 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Locale } from "@/i18n/config";
 import type { Messages } from "@/i18n/messages/en";
-import { StoryList, type StoryRow } from "@/components/groups/story-list";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { StoryCard } from "@/components/stories/story-card";
+import { loadStoryCards } from "@/lib/stories";
 import type { GroupContext } from "./page";
-import { StoryForm } from "./story-form";
 
 const PHOTO_LIMIT = 30;
 
@@ -11,11 +13,7 @@ const PHOTO_LIMIT = 30;
 export async function MemoriesTab({ ctx, locale, t }: { ctx: GroupContext; locale: Locale; t: Messages }) {
   const supabase = await createClient();
   const [{ data: stories }, { data: photos }] = await Promise.all([
-    supabase
-      .from("stories")
-      .select("id, body, photo_url, created_at, author:profiles(username, display_name, avatar_url)")
-      .eq("group_id", ctx.id)
-      .order("created_at", { ascending: false }),
+    supabase.from("stories").select("id").eq("group_id", ctx.id).order("created_at", { ascending: false }).limit(50),
     supabase
       .from("group_messages")
       .select("image_path")
@@ -31,17 +29,26 @@ export async function MemoriesTab({ ctx, locale, t }: { ctx: GroupContext; local
     : { data: [] };
   const urls = (signed ?? []).map((s) => s.signedUrl).filter((u): u is string => Boolean(u));
   const mem = t.groups.memories;
-  const storyRows: StoryRow[] = stories ?? [];
+  const cards = await loadStoryCards(supabase, (stories ?? []).map((r) => r.id), locale);
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">{mem.write}</h2>
-        <StoryForm goalId={ctx.goalId} groupId={ctx.id} userId={ctx.me} t={{ memories: mem, errors: t.errors }} />
-      </section>
+      <Button asChild className="self-start">
+        <Link href={`/${locale}/stories/new?goal=${ctx.goalSlug}&group=${ctx.id}`}>{mem.write}</Link>
+      </Button>
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">{mem.stories}</h2>
-        <StoryList stories={storyRows} locale={locale} empty={mem.storiesEmpty} />
+        {cards.length === 0 ? (
+          <p className="text-muted-foreground text-sm">{mem.storiesEmpty}</p>
+        ) : (
+          <ul className="flex flex-col gap-4">
+            {cards.map((story) => (
+              <li key={story.id}>
+                <StoryCard story={story} locale={locale} t={t} viewerId={ctx.me} />
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">{mem.photos}</h2>

@@ -270,31 +270,6 @@ export async function reportMessage(messageId: string, reason: ReportReason): Pr
   return { ok: true };
 }
 
-/**
- * Post a story. The photo (optional) was uploaded by the browser to the
- * caller's folder in the public stories bucket; the database checks the URL.
- */
-export async function postStory(_prev: FormState, formData: FormData): Promise<FormState> {
-  const ctx = await signedIn();
-  if (!ctx) return { error: "notSignedIn" };
-  const goalId = uuid.safeParse(formData.get("goalId"));
-  const groupId = formData.get("groupId") ? uuid.safeParse(formData.get("groupId")) : null;
-  const body = String(formData.get("body") ?? "").trim();
-  const photoUrl = String(formData.get("photoUrl") ?? "") || null;
-  if (!goalId.success || (groupId && !groupId.success) || !body || body.length > 2000) {
-    return { error: "invalidInput", values: { body } };
-  }
-  const { error } = await ctx.supabase.from("stories").insert({
-    goal_id: goalId.data,
-    group_id: groupId?.data ?? null,
-    body,
-    photo_url: photoUrl,
-  });
-  if (error) return { error: groupError(error), values: { body } };
-  refresh();
-  return { ok: true };
-}
-
 export async function dismissStoryPrompt(groupId: string): Promise<void> {
   const ctx = await signedIn();
   if (!ctx || !uuid.safeParse(groupId).success) return;

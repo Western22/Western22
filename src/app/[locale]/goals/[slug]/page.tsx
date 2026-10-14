@@ -14,7 +14,8 @@ import { format } from "@/i18n/format";
 import { AddGoalButton } from "./add-goal-button";
 import { JoinGroupButton } from "@/components/groups/join-group-button";
 import { CreateGroupForm } from "@/components/groups/create-group-form";
-import { StoryList, type StoryRow } from "@/components/groups/story-list";
+import { StoryCard } from "@/components/stories/story-card";
+import { loadStoryCards } from "@/lib/stories";
 
 const SLUG_RE = /^[a-z0-9-]{3,90}$/;
 
@@ -60,15 +61,15 @@ async function Goal({ params }: { params: PageProps<"/[locale]/goals/[slug]">["p
 
   const [{ data: groupRows }, { data: storyRows }] = await Promise.all([
     supabase.rpc("goal_groups", { p_goal_id: goal.goal_id }),
-    supabase
-      .from("stories")
-      .select("id, body, photo_url, created_at, author:profiles(username, display_name, avatar_url)")
-      .eq("goal_id", goal.goal_id)
-      .order("created_at", { ascending: false })
-      .limit(10),
+    supabase.from("stories").select("id").eq("goal_id", goal.goal_id).order("created_at", { ascending: false }).limit(10),
   ]);
   const groups = groupRows ?? [];
-  const stories: StoryRow[] = storyRows ?? [];
+  const [stories, myItem] = await Promise.all([
+    loadStoryCards(supabase, (storyRows ?? []).map((r) => r.id), locale),
+    goal.my_item_id
+      ? supabase.from("bucket_items").select("status").eq("id", goal.my_item_id).maybeSingle().then((r) => r.data)
+      : null,
+  ]);
 
   const g = t.goal;
   const place = [goal.place_name, goal.place_country ? countryName(goal.place_country, locale) : null]
@@ -156,8 +157,23 @@ async function Goal({ params }: { params: PageProps<"/[locale]/goals/[slug]">["p
           <MessageSquareText className="size-5" aria-hidden />
           {g.stories}
         </h2>
-        {/* TODO(stories): rank by reactions once they exist; for now, newest first. */}
-        <StoryList stories={stories} locale={locale} empty={g.storiesEmpty} />
+        {myItem?.status === "done" && (
+          <Button asChild size="sm" variant="outline" className="self-start">
+            <Link href={`/${locale}/stories/new?goal=${goal.slug}`}>{t.stories.share}</Link>
+          </Button>
+        )}
+        {/* Newest first. TODO(stories): consider ranking by reactions once there are many. */}
+        {stories.length === 0 ? (
+          <p className="text-muted-foreground rounded-xl border border-dashed p-4 text-sm">{g.storiesEmpty}</p>
+        ) : (
+          <ul className="flex flex-col gap-4">
+            {stories.map((story) => (
+              <li key={story.id}>
+                <StoryCard story={story} locale={locale} t={t} viewerId={user?.id ?? null} />
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section id="groups" className="flex scroll-mt-4 flex-col gap-3">

@@ -30,6 +30,15 @@ shared checklist, status forming → planning → confirmed → completed), Memb
 and Memories (stories and chat photos). Completing a group marks every member's
 item done and prompts each member to post a story; stories also show on goal pages.
 
+**Increment 6 (social):** follow people from their profile; story posts with up
+to 4 resized photos, caption, linked goal, city-level place and tagged group
+members; reactions (❤️ 🔥 🙌 👏), comments and an "Add to my bucket list" button
+on every story; a home feed for signed-in people that mixes stories from people
+you follow and your groups, new groups for goals on your list, and trending
+goals, each with the reason it's there. Feed weights live in `src/lib/feed/config.ts`.
+Badges are earned from real milestones, celebrated once to their owner and shown
+on profiles, never in feeds.
+
 Every table has Row Level Security.
 
 ## Stack
@@ -71,6 +80,7 @@ npx tsc --noEmit && npm run lint && npm run build
 psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/tests/rls_test.sql
 psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/tests/matching_test.sql
 psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/tests/groups_test.sql
+psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/tests/social_test.sql
 ```
 
 Each test runs in a transaction, rolls back, and prints `ALL ... CHECKS PASSED`.
@@ -102,16 +112,23 @@ src/
     requests/              requests inbox: waiting for you, doing it together, sent
     groups/                my groups (unread, story prompts, join requests)
     groups/[groupId]       group space: ?tab=chat|plan|members|memories
+    stories/new            story composer (?goal=<slug>&group=<id>)
+    stories/[storyId]      one story with reactions, comments and tags
+    page.tsx               home: the feed when signed in, the landing page otherwise
     goals/[slug]/          goal page: description, counts, best time, add button
     explore/               browse goals: category, region, season, trending, near me
   app/auth/confirm/        handles links from Supabase auth emails
   lib/actions/             Server Actions (validated with zod, protected by RLS)
   lib/auth.ts              data access layer: getCurrentUser, requireOnboardedProfile (verifies JWT)
-  lib/badges.ts            badge rules, computed from profile stats
+  lib/badges.ts            badge names and emoji (rules live in badges_for() in 0008)
+  lib/feed/config.ts       feed weights, decay and limits (the one place to tune)
+  lib/stories.ts           loads story cards for feeds, goal pages and profiles
   lib/matching/config.ts   matching weights and tuning values (the one place to tune)
   lib/matching/reasons.ts  reason chips ("Both aiming for 2027", "Speaks Spanish")
   lib/images.ts            browser photo resize (strips EXIF/GPS) for chat and stories
-  components/groups/       join button, create-group form, story list
+  components/groups/       join button, create-group form
+  components/stories/      story card, composer, reactions, "Add to my bucket list"
+  components/feed/         home feed and the one-time badge celebration
   components/              goal-search (typeahead over canonical goals), chip-picker
   lib/supabase/            server, browser and proxy clients + database types
 supabase/
@@ -120,10 +137,13 @@ supabase/
                            0004 item details, fuzzy matching, follows, explore/goal RPCs,
                            0005 seed of 212 goals,
                            0006 matching: find_matches, match requests, blocks,
-                           0007 groups, plan, chat, reports, stories, storage buckets
+                           0007 groups, plan, chat, reports, stories, storage buckets,
+                           0008 social: story photos, tags, reactions, comments,
+                                home_feed, badges, follow counts
   tests/rls_test.sql       RLS checks (two users + anonymous)
   tests/matching_test.sql  matching, requests and blocking checks
   tests/groups_test.sql    groups, plan, chat, reports, completion checks
+  tests/social_test.sql    follows, stories, tags, reactions, comments, feed, badges
 ```
 
 ## Privacy rules (enforced in the database)
@@ -152,6 +172,14 @@ supabase/
   bucket under the group's folder and are shown through short-lived signed URLs.
 - A chat message reported by 3 members is hidden from everyone but its sender
   and moderators. Who ticked a checklist item is recorded by the database.
+- Stories are public. Story photos go in the public `stories` bucket, only in the
+  author's own folder, after the browser re-encodes them (no EXIF/GPS). `place` is
+  free text the author types, capped at 100 characters; the form asks for city or
+  region only. People can be tagged only if they're in the story's group, and can
+  remove their own tag.
+- Blocks hide stories, reactions and comments both ways, and block follows. Who
+  blocked whom is never revealed (`blocked_with_me()` answers only for the caller).
+- Comments are limited to 30 an hour per person, stories to 10 a day.
 - All timestamps are `timestamptz` (UTC). `target_date` is a calendar date with no time.
 
 ## Adding a language
@@ -165,12 +193,11 @@ typed as `Messages`, and register it in `src/i18n/get-messages.ts`.
 - `TODO(geocoding)`: typed home cities are geocoded with the free public
   Nominatim server (1 request/second policy). At scale, self-host it and set `NOMINATIM_URL`.
 - `TODO(age-gate)`: delete accounts that never confirm 18+ (needs a service-role job).
-- `TODO(badges)`: persist awarded badges once notifications need them.
-- `TODO(follows)`: follow/unfollow UI (until then, buddies-only items are visible only to you).
-- `TODO(moderation)`: a review screen for reported messages and pending goals.
+- `TODO(moderation)`: a review screen for reported messages, story comments and pending goals.
 - `TODO(chat)`: load older messages (the chat shows the latest 100).
 - `TODO(notifications)`: new requests show as a badge on the header inbox; no email or push yet.
-- `TODO(stories)`: rank stories by reactions once reactions exist (newest first for now).
+- `TODO(stories)`: goal pages list stories newest first; consider ranking by reactions.
+- `TODO(storage)`: photos removed in the story composer stay in the bucket; clean up with a scheduled job.
 - `TODO(goal-photos)`: seeded goals use category artwork; add licensed photos with credits.
-- `TODO(feed)`: paginate Explore.
+- `TODO(feed)`: paginate Explore; send signed-in people who haven't onboarded to /welcome from home.
 - `TODO(i18n)`: `not-found` and `error` pages are English-only for now.
