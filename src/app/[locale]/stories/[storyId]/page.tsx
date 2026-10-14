@@ -9,6 +9,7 @@ import { isLocale } from "@/i18n/config";
 import { getMessages } from "@/i18n/get-messages";
 import { StoryCard } from "@/components/stories/story-card";
 import { CommentForm, DeleteCommentButton, UntagButton } from "./comment-controls";
+import { ReportButton } from "@/components/safety/report-button";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -81,6 +82,14 @@ async function Story({ params }: { params: PageProps<"/[locale]/stories/[storyId
                       </time>
                     </p>
                     <p className="text-sm break-words whitespace-pre-line">{c.body}</p>
+                    {user && c.author_id !== user.id && (
+                      <ReportButton
+                        targetType="comment"
+                        targetId={c.id}
+                        blockUser={{ id: c.author_id, name }}
+                        t={{ report: t.report, errors: t.errors }}
+                      />
+                    )}
                   </div>
                   {canDelete && <DeleteCommentButton commentId={c.id} label={s.deleteComment} />}
                 </li>

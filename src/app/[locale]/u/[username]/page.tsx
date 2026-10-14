@@ -16,6 +16,8 @@ import { getMessages } from "@/i18n/get-messages";
 import { format } from "@/i18n/format";
 import { cn } from "@/lib/utils";
 import { BlockButton } from "./block-button";
+import { ReportButton } from "@/components/safety/report-button";
+import { VerifiedBadge } from "@/components/safety/verified-badge";
 import { FollowButton } from "./follow-button";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/u/[username]">): Promise<Metadata> {
@@ -46,7 +48,7 @@ async function PublicProfile({ params }: { params: PageProps<"/[locale]/u/[usern
   const supabase = await createClient();
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("id, username, display_name, bio, avatar_url, home_city, home_country, languages, interests, travel_styles")
+    .select("id, username, display_name, bio, avatar_url, home_city, home_country, languages, interests, travel_styles, phone_verified_at, id_verified_at")
     .eq("username", parsed.data)
     .maybeSingle();
   if (error) throw new Error("Could not load profile");
@@ -103,6 +105,7 @@ async function PublicProfile({ params }: { params: PageProps<"/[locale]/u/[usern
           <h1 className="text-2xl font-bold tracking-tight">{name}</h1>
           <p className="text-muted-foreground text-sm">@{profile.username}</p>
         </div>
+        <VerifiedBadge profile={profile} t={t.verification} />
         {/* Only the city label the person typed; their stored location is never exposed. */}
         {place && (
           <p className="text-muted-foreground flex items-center gap-1 text-sm">
@@ -122,9 +125,14 @@ async function PublicProfile({ params }: { params: PageProps<"/[locale]/u/[usern
           </div>
         </dl>
         {viewer?.id === profile.id && (
-          <Button asChild variant="outline" size="sm" className="bg-background/80">
-            <Link href={`/${locale}/profile`}>{p.editProfile}</Link>
-          </Button>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button asChild variant="outline" size="sm" className="bg-background/80">
+              <Link href={`/${locale}/profile`}>{p.editProfile}</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm" className="bg-background/80">
+              <Link href={`/${locale}/settings`}>{t.settings.link}</Link>
+            </Button>
+          </div>
         )}
         <p className="text-muted-foreground text-sm">
           {p.followers} <span className="text-foreground font-semibold">{followCounts.followers}</span> ·{" "}
@@ -143,6 +151,14 @@ async function PublicProfile({ params }: { params: PageProps<"/[locale]/u/[usern
             userId={profile.id}
             blocked={blocked}
             t={{ block: p.block, unblock: p.unblock, confirm: format(p.blockConfirm, { name }) }}
+          />
+        )}
+        {viewer && viewer.id !== profile.id && (
+          <ReportButton
+            targetType="user"
+            targetId={profile.id}
+            blockUser={blocked ? undefined : { id: profile.id, name }}
+            t={{ report: t.report, errors: t.errors }}
           />
         )}
       </section>

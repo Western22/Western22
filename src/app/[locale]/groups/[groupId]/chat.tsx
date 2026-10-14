@@ -1,21 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Flag, ImagePlus, Send, X } from "lucide-react";
+import { ImagePlus, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "@/lib/supabase/client";
-import { reportMessage } from "@/lib/actions/groups";
+import { sendMessage } from "@/lib/actions/groups";
+import { ReportButton } from "@/components/safety/report-button";
 import { MAX_PHOTO_BYTES, shrinkToJpeg } from "@/lib/images";
-import { REPORT_REASONS, type GroupMessage, type ReportReason } from "@/lib/supabase/database.types";
+import type { GroupMessage } from "@/lib/supabase/database.types";
 import type { Messages } from "@/i18n/messages/en";
 import { format } from "@/i18n/format";
 import { cn } from "@/lib/utils";
 
 export type ChatMember = { id: string; name: string; avatarUrl: string | null; lastReadAt: string };
 
-type T = { chat: Messages["groups"]["chat"]; errors: Messages["errors"] };
+type T = { chat: Messages["groups"]["chat"]; errors: Messages["errors"]; report: Messages["report"] };
 
 /** Signed URLs for private chat photos last an hour; the page reloads long before that matters. */
 const SIGNED_URL_SECONDS = 3600;
@@ -186,10 +187,18 @@ export function Chat({
                         ))}
                       {m.body && <p className="break-words whitespace-pre-line">{m.body}</p>}
                     </div>
-                    <span className="text-muted-foreground flex items-center gap-2 px-1 text-[11px]">
+                    <span className="text-muted-foreground flex flex-wrap items-center gap-2 px-1 text-[11px]">
                       <time dateTime={m.created_at}>{timeFormat.format(new Date(m.created_at))}</time>
                       {m.hidden_at && <span>{t.chat.hidden}</span>}
-                      {!mine && <ReportButton messageId={m.id} t={t} />}
+                      {!mine && (
+                        <ReportButton
+                          targetType="message"
+                          targetId={m.id}
+                          blockUser={sender ? { id: m.sender_id, name: sender.name } : undefined}
+                          t={t}
+                          className="flex items-center gap-0.5 opacity-70 hover:underline hover:opacity-100"
+                        />
+                      )}
                     </span>
                     {myLast?.id === m.id && seenCount > 0 && (
                       <span className="text-muted-foreground px-1 text-[11px]">
@@ -206,45 +215,6 @@ export function Chat({
       </div>
       <Composer groupId={groupId} supabase={supabase} onSent={addMessage} t={t} />
     </section>
-  );
-}
-
-function ReportButton({ messageId, t }: { messageId: string; t: T }) {
-  const [open, setOpen] = useState(false);
-  const [done, setDone] = useState(false);
-  const [pending, startTransition] = useTransition();
-
-  if (done) return <span role="status">{t.chat.reported}</span>;
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex items-center gap-0.5 opacity-70 hover:underline hover:opacity-100"
-        aria-label={t.chat.report}
-      >
-        <Flag className="size-3" aria-hidden />
-        {t.chat.report}
-      </button>
-    );
-  }
-  const send = (reason: ReportReason) =>
-    startTransition(async () => {
-      const result = await reportMessage(messageId, reason);
-      if (!result.error) setDone(true);
-    });
-  return (
-    <span role="group" aria-label={t.chat.reportTitle} className="flex flex-wrap items-center gap-1">
-      <span>{t.chat.reportTitle}</span>
-      {REPORT_REASONS.map((r) => (
-        <button key={r} type="button" disabled={pending} onClick={() => send(r)} className="bg-muted rounded-full px-2 py-0.5 hover:underline">
-          {t.chat.reasons[r]}
-        </button>
-      ))}
-      <button type="button" onClick={() => setOpen(false)} aria-label="✕" className="px-1">
-        ✕
-      </button>
-    </span>
   );
 }
 
@@ -290,13 +260,13 @@ function Composer({
         const { error: uploadError } = await supabase.storage.from("group-media").upload(imagePath, blob, { contentType: "image/jpeg" });
         if (uploadError) throw uploadError;
       }
-      const { data, error: insertError } = await supabase
-        .from("group_messages")
-        .insert({ group_id: groupId, body: text || null, image_path: imagePath })
-        .select("id, group_id, sender_id, body, image_path, created_at, hidden_at")
-        .single();
-      if (insertError) throw insertError;
-      onSent(data);
+      // The server runs text moderation before saving.
+      const result = await sendMessage(groupId, text, imagePath);
+      if (result.error || !result.message) {
+        setError(result.error && result.error !== "generic" ? t.errors[result.error] : t.chat.sendFailed);
+        return;
+      }
+      onSent(result.message);
       setBody("");
       pickPhoto(undefined);
       if (fileRef.current) fileRef.current.value = "";

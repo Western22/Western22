@@ -4,12 +4,14 @@ import type { Locale } from "@/i18n/config";
 import type { Messages } from "@/i18n/messages/en";
 import { format } from "@/i18n/format";
 import type { GroupContext } from "./page";
+import { SafetyTips } from "@/components/safety/safety-tips";
+import { SharePlan } from "@/components/safety/share-plan";
 import { ChecklistAddForm, ChecklistRow, DateOptionActions, PlanDetailsForm, ProposeDatesForm, StatusControl } from "./plan-controls";
 
 /** Plan tab: status, proposed dates with votes, where and how much, and a shared checklist. */
 export async function PlanTab({ ctx, locale, t }: { ctx: GroupContext; locale: Locale; t: Messages }) {
   const supabase = await createClient();
-  const [{ data: plan }, { data: options }, { data: checklist }, { data: members }] = await Promise.all([
+  const [{ data: plan }, { data: options }, { data: checklist }, { data: members }, { data: settings }, { data: shares }] = await Promise.all([
     supabase.from("group_plans").select("location_text, budget_amount, budget_currency, notes").eq("group_id", ctx.id).maybeSingle(),
     supabase
       .from("group_date_options")
@@ -18,7 +20,17 @@ export async function PlanTab({ ctx, locale, t }: { ctx: GroupContext; locale: L
       .order("starts_on"),
     supabase.from("group_checklist_items").select("id, title, category, done, done_by, created_by").eq("group_id", ctx.id).order("created_at"),
     supabase.from("group_members").select("user_id, profile:profiles(display_name, username)").eq("group_id", ctx.id),
+    supabase.from("profile_settings").select("safety_tips_seen_at").eq("user_id", ctx.me).maybeSingle(),
+    supabase
+      .from("plan_shares")
+      .select("id, contact_name, expires_at")
+      .eq("group_id", ctx.id)
+      .is("revoked_at", null)
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false }),
   ]);
+  // Safety tips before a first meetup: once the group is getting real, until acknowledged.
+  const showTips = (ctx.status === "planning" || ctx.status === "confirmed") && !settings?.safety_tips_seen_at;
   const p = t.groups.plan;
   const names = new Map((members ?? []).map((m) => [m.user_id, m.profile?.display_name || `@${m.profile?.username ?? "?"}`]));
   const dateFormat = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
@@ -29,6 +41,7 @@ export async function PlanTab({ ctx, locale, t }: { ctx: GroupContext; locale: L
 
   return (
     <div className="flex flex-col gap-6">
+      {showTips && <SafetyTips locale={locale} t={t.safety} />}
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold">{p.status}</h2>
         <StatusControl groupId={ctx.id} status={ctx.status} isOwner={ctx.isOwner} t={tPlan} />
@@ -75,6 +88,7 @@ export async function PlanTab({ ctx, locale, t }: { ctx: GroupContext; locale: L
           }}
           t={tPlan}
         />
+        <p className="text-muted-foreground text-xs">{t.safety.publicPlaces}</p>
       </section>
 
       <section className="flex flex-col gap-3">
@@ -105,6 +119,10 @@ export async function PlanTab({ ctx, locale, t }: { ctx: GroupContext; locale: L
         )}
         <ChecklistAddForm groupId={ctx.id} t={tPlan} />
       </section>
+
+      {ctx.status !== "completed" && (
+        <SharePlan groupId={ctx.id} groupName={ctx.name} shares={shares ?? []} locale={locale} t={{ safety: t.safety, errors: t.errors }} />
+      )}
     </div>
   );
 }

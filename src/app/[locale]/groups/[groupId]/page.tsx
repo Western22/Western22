@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ReportButton } from "@/components/safety/report-button";
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -118,6 +119,9 @@ async function Group({
           · {format(g.members, { count: group.member_count, max: group.max_size })}
         </p>
         {group.description && <p className="text-sm text-pretty">{group.description}</p>}
+        {!ctx.isOwner && (
+          <ReportButton targetType="group" targetId={group.id} t={{ report: t.report, errors: t.errors }} />
+        )}
       </header>
 
       {!membership ? (

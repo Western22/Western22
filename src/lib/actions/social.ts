@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
+import { moderateText } from "@/lib/moderation";
+import { safetyError } from "@/lib/db-errors";
 import { REACTION_KINDS, type ReactionKind } from "@/lib/supabase/database.types";
 import type { FormState } from "@/lib/validation";
 import { defaultLocale, isLocale } from "@/i18n/config";
@@ -28,7 +30,7 @@ export async function follow(userId: string): Promise<FormState> {
   if (!uuid.safeParse(userId).success || userId === ctx.user.id) return { error: "invalidInput" };
   const { error } = await ctx.supabase.from("follows").insert({ follower_id: ctx.user.id, followee_id: userId });
   // Already following is fine.
-  if (error && error.code !== "23505") return { error: "generic" };
+  if (error && error.code !== "23505") return { error: safetyError(error) ?? "generic" };
   refresh();
   return { ok: true };
 }
@@ -71,6 +73,8 @@ export async function createStory(_prev: FormState, formData: FormData): Promise
   });
   const values = { body, place: String(formData.get("place") ?? "") };
   if (!parsed.success) return { error: "invalidInput", values };
+  const verdict = await moderateText(`${parsed.data.body} ${parsed.data.place}`, { kind: "story" });
+  if (verdict.decision === "block") return { error: "contentBlocked", values };
 
   const { data, error } = await ctx.supabase.rpc("create_story", {
     p_goal_id: parsed.data.goalId,
@@ -81,7 +85,11 @@ export async function createStory(_prev: FormState, formData: FormData): Promise
     p_tagged: parsed.data.groupId ? parsed.data.tagged : [],
   });
   if (error || !data) {
-    return { error: error?.code === "54000" ? "tooManyStories" : error?.code === "22023" ? "invalidInput" : "generic", values };
+    const key = safetyError(error) ?? (error?.code === "54000" ? "tooManyStories" : error?.code === "22023" ? "invalidInput" : "generic");
+    return { error: key, values };
+  }
+  if (verdict.decision === "review") {
+    await ctx.supabase.rpc("flag_my_content", { p_target_type: "story", p_target_id: data, p_categories: verdict.categories });
   }
   const locale = String(formData.get("locale") ?? "");
   redirect(`/${isLocale(locale) ? locale : defaultLocale}/stories/${data}`);
@@ -101,9 +109,14 @@ export async function addComment(_prev: FormState, formData: FormData): Promise<
   const storyId = uuid.safeParse(formData.get("storyId"));
   const body = String(formData.get("body") ?? "").trim();
   if (!storyId.success || !body || body.length > 500) return { error: "invalidInput", values: { body } };
-  const { error } = await ctx.supabase.from("story_comments").insert({ story_id: storyId.data, body });
+  const verdict = await moderateText(body, { kind: "comment" });
+  if (verdict.decision === "block") return { error: "contentBlocked", values: { body } };
+  const { data, error } = await ctx.supabase.from("story_comments").insert({ story_id: storyId.data, body }).select("id").single();
   // The insert policy also caps comments per hour; a refusal there is a 42501.
-  if (error) return { error: error.code === "42501" ? "tooManyComments" : "generic", values: { body } };
+  if (error) return { error: safetyError(error) ?? (error.code === "42501" ? "tooManyComments" : "generic"), values: { body } };
+  if (verdict.decision === "review") {
+    await ctx.supabase.rpc("flag_my_content", { p_target_type: "comment", p_target_id: data.id, p_categories: verdict.categories });
+  }
   refresh();
   return { ok: true };
 }

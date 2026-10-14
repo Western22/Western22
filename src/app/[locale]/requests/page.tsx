@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireOnboardedProfile } from "@/lib/auth";
+import { SafetyTips } from "@/components/safety/safety-tips";
 import { createClient } from "@/lib/supabase/server";
 import type { MatchRequest } from "@/lib/supabase/database.types";
 import { isLocale, type Locale } from "@/i18n/config";
@@ -34,7 +35,10 @@ export default async function RequestsPage({ params }: PageProps<"/[locale]/requ
 async function Requests({ locale, t }: { locale: Locale; t: Messages }) {
   await requireOnboardedProfile(locale);
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("my_match_requests", { p_locale: locale });
+  const [{ data, error }, { data: settings }] = await Promise.all([
+    supabase.rpc("my_match_requests", { p_locale: locale }),
+    supabase.from("profile_settings").select("safety_tips_seen_at").maybeSingle(),
+  ]);
   if (error) throw new Error("Could not load requests");
   const r = t.requests;
 
@@ -47,6 +51,8 @@ async function Requests({ locale, t }: { locale: Locale; t: Messages }) {
 
   return (
     <>
+      {/* Before a first meetup: once someone has agreed to do a goal together. */}
+      {together.length > 0 && !settings?.safety_tips_seen_at && <SafetyTips locale={locale} t={t.safety} />}
       <Section title={r.received} items={received} locale={locale} t={t} />
       <Section title={r.together} items={together} locale={locale} t={t} />
       <Section title={r.sent} items={sent} locale={locale} t={t} />

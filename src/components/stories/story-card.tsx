@@ -7,6 +7,7 @@ import { format } from "@/i18n/format";
 import { cn } from "@/lib/utils";
 import { ReactionBar } from "./reaction-bar";
 import { AddFromStoryButton } from "./add-from-story-button";
+import { ReportButton } from "@/components/safety/report-button";
 
 /**
  * A story: author, goal, place, photos, caption, tags, reactions, comment
@@ -113,6 +114,14 @@ export function StoryCard({
               {format(s.commentCount, { count: story.comment_count })}
             </Link>
             {story.inspired_count > 0 && <span>{format(s.inspired, { count: story.inspired_count })}</span>}
+            {viewerId && !mine && (
+              <ReportButton
+                targetType="story"
+                targetId={story.id}
+                blockUser={{ id: story.author_id, name }}
+                t={{ report: t.report, errors: t.errors }}
+              />
+            )}
           </span>
           {mine ? null : viewerId ? (
             <AddFromStoryButton storyId={story.id} onList={story.on_my_list} t={{ stories: s, errors: t.errors }} />

@@ -12,8 +12,8 @@ export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const firstSegment = pathname.split("/")[1];
 
-  // /auth/* route handlers are locale-free (Supabase redirects there).
-  if (!isLocale(firstSegment) && !pathname.startsWith("/auth/")) {
+  // /auth/* (Supabase redirects there) and /api/* route handlers are locale-free.
+  if (!isLocale(firstSegment) && !pathname.startsWith("/auth/") && !pathname.startsWith("/api/")) {
     const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;
     const locale = isLocale(cookieLocale)
       ? cookieLocale

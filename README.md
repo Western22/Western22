@@ -39,6 +39,17 @@ goals, each with the reason it's there. Feed weights live in `src/lib/feed/confi
 Badges are earned from real milestones, celebrated once to their owner and shown
 on profiles, never in feeds.
 
+**Increment 7 (trust and safety):** phone verification with a "Phone verified"
+badge (ID verification is a provider hook for later); Report on people, chat
+messages, stories, comments and groups, with "Also block" for people; a
+moderation queue at `/en/admin/moderation` (dismiss, warn, remove, suspend);
+automatic text checks on posts and messages (a database term list plus a
+pluggable app provider); safety tips before first meetups, "meet in public"
+reminders and "Share my plan" links for a trusted contact; rate limits on
+messages, follows, reports and shares; settings to hide from matching, use an
+approximate (~25 km) location, download all your data and delete your account;
+and a community guidelines page at `/en/guidelines`.
+
 Every table has Row Level Security.
 
 ## Stack
@@ -77,13 +88,12 @@ recorded on the profile when the OAuth callback lands in `/auth/confirm`.
 
 ```bash
 npx tsc --noEmit && npm run lint && npm run build
-psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/tests/rls_test.sql
-psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/tests/matching_test.sql
-psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/tests/groups_test.sql
-psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/tests/social_test.sql
+npx supabase db reset       # the RLS test expects an empty database
+supabase/tests/run_all.sh   # rls, matching, groups, social, trust_safety
 ```
 
-Each test runs in a transaction, rolls back, and prints `ALL ... CHECKS PASSED`.
+Each test runs in a transaction, rolls back, and prints `ALL ... CHECKS PASSED`;
+`run_all.sh` stops at the first one that doesn't.
 Group chat needs the Realtime service: don't exclude `realtime` when running
 `npx supabase start -x ...` (hosted projects have it on).
 
@@ -93,7 +103,12 @@ Group chat needs the Realtime service: don't exclude `realtime` when running
 2. In Auth > URL Configuration, set the Site URL and add `https://<your-domain>/auth/confirm` as a redirect URL.
 3. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`
    and `NEXT_PUBLIC_AUTH_PROVIDERS` in your host.
-4. Magic links on the hosted project use Supabase's built-in email sender, which is
+4. Set `SUPABASE_SECRET_KEY` (server only, never `NEXT_PUBLIC_`) so account deletion
+   and suspension bans work. Optionally set `MODERATION_PROVIDER` (default `heuristics`).
+5. Phone verification needs an SMS provider (Auth > Providers > Phone, e.g. Twilio,
+   which is paid) and **"Confirm phone" turned on**; without it Supabase marks any
+   number as verified without sending a code.
+6. Magic links on the hosted project use Supabase's built-in email sender, which is
    rate-limited and meant for testing; production needs a custom SMTP provider.
 
 ## Layout
@@ -117,6 +132,11 @@ src/
     page.tsx               home: the feed when signed in, the landing page otherwise
     goals/[slug]/          goal page: description, counts, best time, add button
     explore/               browse goals: category, region, season, trending, near me
+    settings/              phone verification, privacy, data export, delete account
+    guidelines/            community guidelines (#meeting-safely for safety tips)
+    share/[shareId]        read-only plan a trusted contact opens from "Share my plan"
+    admin/moderation       moderation queue (moderators only; 404 for everyone else)
+  app/api/export           "Download my data" (JSON)
   app/auth/confirm/        handles links from Supabase auth emails
   lib/actions/             Server Actions (validated with zod, protected by RLS)
   lib/auth.ts              data access layer: getCurrentUser, requireOnboardedProfile (verifies JWT)
@@ -129,6 +149,11 @@ src/
   components/groups/       join button, create-group form
   components/stories/      story card, composer, reactions, "Add to my bucket list"
   components/feed/         home feed and the one-time badge celebration
+  components/safety/       report button, verified badge, account notices, safety tips, share my plan
+  lib/moderation/          text moderation: pluggable provider (MODERATION_PROVIDER), heuristics default
+  lib/verification/        ID verification provider hook (none yet; Stripe Identity notes in TODO)
+  lib/supabase/admin.ts    server-only secret-key client (deletion, bans); null if the key is unset
+  lib/db-errors.ts         maps suspension, blocked text and rate-limit errors to messages
   components/              goal-search (typeahead over canonical goals), chip-picker
   lib/supabase/            server, browser and proxy clients + database types
 supabase/
@@ -139,11 +164,17 @@ supabase/
                            0006 matching: find_matches, match requests, blocks,
                            0007 groups, plan, chat, reports, stories, storage buckets,
                            0008 social: story photos, tags, reactions, comments,
-                                home_feed, badges, follow counts
+                                home_feed, badges, follow counts,
+                           0009 trust and safety: verification, reports, moderation queue
+                                and actions, suspensions, warnings, text checks, rate
+                                limits, privacy settings, plan shares, export, deletion
   tests/rls_test.sql       RLS checks (two users + anonymous)
   tests/matching_test.sql  matching, requests and blocking checks
   tests/groups_test.sql    groups, plan, chat, reports, completion checks
   tests/social_test.sql    follows, stories, tags, reactions, comments, feed, badges
+  tests/trust_safety_test.sql  verification, reports, queue, suspensions, limits, privacy,
+                           plan shares, export and deletion
+  tests/run_all.sh         runs every database test
 ```
 
 ## Privacy rules (enforced in the database)
@@ -180,6 +211,24 @@ supabase/
 - Blocks hide stories, reactions and comments both ways, and block follows. Who
   blocked whom is never revealed (`blocked_with_me()` answers only for the caller).
 - Comments are limited to 30 an hour per person, stories to 10 a day.
+- Phone numbers stay in Supabase Auth; profiles only get `phone_verified_at`,
+  set by a database trigger when Auth confirms the number. Nobody can set it,
+  or `id_verified_at`, from the browser.
+- "Approximate location only" re-snaps the home point to a ~25 km grid; "Hide me
+  from matching" drops all your items from everyone's matches.
+- Reports are visible only to the person who made them and to moderators; the
+  reported person is never told who reported them. Moderation actions are logged
+  with a snapshot of the content.
+- A suspended person can read but can't post, message, follow or join (they can still report);
+  the database enforces this, and their sign-in is banned for the same period.
+- Rate limits: 20 messages a minute and 500 a day, 60 follows an hour, 20 reports
+  a day, 10 active plan shares.
+- "Share my plan" links are unguessable, expire (3 to 30 days) and can be revoked.
+  They show the goal, group, status, typed location, dates and first names, never
+  exact locations or contact details. Only the contact's label is stored.
+- "Download my data" includes everything stored about you; deleting your account
+  removes your profile, items, messages, stories and photos, and hands groups you
+  own to the longest-standing member.
 - All timestamps are `timestamptz` (UTC). `target_date` is a calendar date with no time.
 
 ## Adding a language
@@ -193,7 +242,11 @@ typed as `Messages`, and register it in `src/i18n/get-messages.ts`.
 - `TODO(geocoding)`: typed home cities are geocoded with the free public
   Nominatim server (1 request/second policy). At scale, self-host it and set `NOMINATIM_URL`.
 - `TODO(age-gate)`: delete accounts that never confirm 18+ (needs a service-role job).
-- `TODO(moderation)`: a review screen for reported messages, story comments and pending goals.
+- `TODO(moderation)`: pending goals aren't in the moderation queue yet; the blocked/review
+  term list in `moderation_terms` (0009) is a small English starter set.
+- `TODO(moderation-provider)`: plug in an external text classifier (`src/lib/moderation/`).
+- `TODO(sms)`: production phone verification needs a paid SMS provider (local uses a test number).
+- `TODO(id-verification)`: ID checks via a provider such as Stripe Identity (`src/lib/verification/`).
 - `TODO(chat)`: load older messages (the chat shows the latest 100).
 - `TODO(notifications)`: new requests show as a badge on the header inbox; no email or push yet.
 - `TODO(stories)`: goal pages list stories newest first; consider ranking by reactions.

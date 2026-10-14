@@ -38,7 +38,7 @@ export async function ChatTab({ ctx, locale, t }: { ctx: GroupContext; locale: L
       truncated={messages.length === INITIAL_MESSAGES}
       initialMembers={chatMembers}
       locale={locale}
-      t={{ chat: t.groups.chat, errors: t.errors }}
+      t={{ chat: t.groups.chat, errors: t.errors, report: t.report }}
     />
   );
 }

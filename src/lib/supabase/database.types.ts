@@ -51,7 +51,11 @@ export type MatchRequestStatus = "pending" | "accepted" | "declined" | "cancelle
 export type GroupStatus = "forming" | "planning" | "confirmed" | "completed";
 export type GroupJoinPolicy = "open" | "request";
 export type ChecklistCategory = "visa" | "gear" | "booking" | "other";
-export type ReportReason = "spam" | "harassment" | "inappropriate" | "other";
+export type ReportReason = "spam" | "harassment" | "hate" | "inappropriate" | "scam" | "safety" | "underage" | "other";
+export type ReportTargetType = "user" | "message" | "story" | "comment" | "group";
+export type ReportStatus = "open" | "actioned" | "dismissed";
+export type ModerationAction = "dismiss" | "warn" | "remove" | "suspend" | "unsuspend";
+export type LocationPrecision = "standard" | "approximate";
 export type ReactionKind = "love" | "fire" | "inspired" | "congrats";
 export type FeedReason = "follow" | "group" | "on_list" | "new_group" | "trending";
 export type BadgeSlug =
@@ -69,7 +73,8 @@ export const REACTION_KINDS: readonly ReactionKind[] = ["love", "fire", "inspire
 
 export const GROUP_STATUSES: readonly GroupStatus[] = ["forming", "planning", "confirmed", "completed"];
 export const CHECKLIST_CATEGORIES: readonly ChecklistCategory[] = ["visa", "gear", "booking", "other"];
-export const REPORT_REASONS: readonly ReportReason[] = ["spam", "harassment", "inappropriate", "other"];
+export const REPORT_REASONS: readonly ReportReason[] = ["spam", "scam", "harassment", "hate", "inappropriate", "safety", "underage", "other"];
+export const REPORT_TARGET_TYPES: readonly ReportTargetType[] = ["user", "message", "story", "comment", "group"];
 
 /** Browsable categories, in display order ("other" holds unreviewed goals). */
 export const GOAL_CATEGORIES: readonly GoalCategory[] = [
@@ -120,6 +125,10 @@ type ProfileRow = {
   adult_confirmed_at: string | null;
   /** Set only by the complete_onboarding() RPC. */
   onboarded_at: string | null;
+  /** Mirrors Supabase Auth's phone confirmation (migration 0009). The number itself stays in auth. */
+  phone_verified_at: string | null;
+  /** Set only by the ID verification provider hook (service role). */
+  id_verified_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -399,6 +408,66 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      // Owner-only. Writes go through update_privacy_settings / acknowledge_safety_tips.
+      profile_settings: {
+        Row: { user_id: string; hide_from_matching: boolean; location_precision: LocationPrecision; safety_tips_seen_at: string | null; updated_at: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      account_status: {
+        Row: { user_id: string; suspended_until: string | null; reason: string | null; updated_at: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      user_warnings: {
+        Row: { id: string; user_id: string; moderator_id: string | null; message: string; created_at: string; acknowledged_at: string | null };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      // Reporters see their own; moderators see all. Writes go through report_content.
+      reports: {
+        Row: {
+          id: string;
+          reporter_id: string | null;
+          target_type: ReportTargetType;
+          target_id: string;
+          target_user_id: string | null;
+          reason: ReportReason | "auto";
+          details: string | null;
+          status: ReportStatus;
+          created_at: string;
+          resolved_at: string | null;
+          resolved_by: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      moderation_actions: {
+        Row: {
+          id: string;
+          moderator_id: string | null;
+          action: ModerationAction;
+          target_type: ReportTargetType;
+          target_id: string;
+          target_user_id: string | null;
+          note: string | null;
+          snapshot: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      plan_shares: {
+        Row: { id: string; group_id: string; user_id: string; contact_name: string; created_at: string; expires_at: string; revoked_at: string | null };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       // Writes go through send_match_request / respond_match_request.
       match_requests: {
         Row: {
@@ -564,7 +633,6 @@ export type Database = {
       set_group_status: { Args: { p_group_id: string; p_status: GroupStatus }; Returns: undefined };
       dismiss_story_prompt: { Args: { p_group_id: string }; Returns: undefined };
       mark_group_read: { Args: { p_group_id: string }; Returns: undefined };
-      report_message: { Args: { p_message_id: string; p_reason: ReportReason; p_details?: string | null }; Returns: undefined };
       is_group_member: { Args: { p_group_id: string }; Returns: boolean };
       goal_groups: {
         Args: { p_goal_id: string };
@@ -656,6 +724,61 @@ export type Database = {
       mark_badges_seen: { Args: Record<string, never>; Returns: undefined };
       are_buddies: { Args: { a: string; b: string }; Returns: boolean };
       goal_title: { Args: { p_goal_id: string; p_locale: string }; Returns: string };
+      update_privacy_settings: { Args: { p_hide_from_matching: boolean; p_approximate_location: boolean }; Returns: undefined };
+      is_moderator: { Args: Record<string, never>; Returns: boolean };
+      acknowledge_safety_tips: { Args: Record<string, never>; Returns: undefined };
+      acknowledge_warning: { Args: { p_warning_id: string }; Returns: undefined };
+      my_account_notices: {
+        Args: Record<string, never>;
+        Returns: { suspended_until: string | null; warning_id: string | null; warning: string | null; warned_at: string | null }[];
+      };
+      report_content: {
+        Args: { p_target_type: ReportTargetType; p_target_id: string; p_reason: ReportReason; p_details?: string | null };
+        Returns: undefined;
+      };
+      flag_my_content: { Args: { p_target_type: ReportTargetType; p_target_id: string; p_categories: string[] }; Returns: undefined };
+      moderation_queue: {
+        Args: { p_status?: ReportStatus; p_limit?: number };
+        Returns: {
+          target_type: ReportTargetType;
+          target_id: string;
+          target_user_id: string | null;
+          target_username: string | null;
+          target_display_name: string | null;
+          preview: string | null;
+          content_exists: boolean;
+          report_count: number;
+          reasons: (ReportReason | "auto")[];
+          details: string[];
+          auto_flagged: boolean;
+          first_reported_at: string;
+          last_reported_at: string;
+          suspended_until: string | null;
+          warning_count: number;
+        }[];
+      };
+      moderate: {
+        Args: { p_target_type: ReportTargetType; p_target_id: string; p_action: ModerationAction; p_note?: string | null; p_suspend_days?: number | null };
+        Returns: string | null;
+      };
+      create_plan_share: { Args: { p_group_id: string; p_contact_name: string; p_days?: number }; Returns: string };
+      revoke_plan_share: { Args: { p_share_id: string }; Returns: undefined };
+      shared_plan: {
+        Args: { p_share_id: string; p_locale?: string };
+        Returns: {
+          sharer_name: string;
+          goal_title: string;
+          group_name: string;
+          status: GroupStatus;
+          location: string | null;
+          dates: { starts_on: string; ends_on: string; votes: number }[];
+          members: string[];
+          expires_at: string;
+          updated_at: string;
+        }[];
+      };
+      export_my_data: { Args: Record<string, never>; Returns: Json };
+      prepare_account_deletion: { Args: Record<string, never>; Returns: { bucket_id: string; name: string }[] };
       profile_stats: {
         Args: { p_profile_id: string };
         Returns: { completed_count: number; active_count: number }[];

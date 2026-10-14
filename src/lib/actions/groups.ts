@@ -5,13 +5,14 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
+import { moderateText } from "@/lib/moderation";
+import { safetyError } from "@/lib/db-errors";
 import {
   CHECKLIST_CATEGORIES,
   GROUP_STATUSES,
-  REPORT_REASONS,
   type ChecklistCategory,
+  type GroupMessage,
   type GroupStatus,
-  type ReportReason,
 } from "@/lib/supabase/database.types";
 import { toFieldErrors, type FormState } from "@/lib/validation";
 import type { ErrorKey } from "@/i18n/messages/en";
@@ -32,7 +33,9 @@ const groupSettingsSchema = z.object({
 });
 
 /** Map Postgres error codes from the group RPCs to i18n error keys. */
-function groupError(error: { code?: string; message?: string } | null): ErrorKey {
+function groupError(error: { code?: string; message?: string; hint?: string | null } | null): ErrorKey {
+  const safety = safetyError(error);
+  if (safety) return safety;
   switch (error?.code) {
     case "54000":
       return error.message?.includes("full") ? "groupFull" : error.message?.includes("groups") ? "tooManyGroups" : "tooManyMatchRequests";
@@ -70,6 +73,8 @@ export async function createGroup(_prev: FormState, formData: FormData): Promise
   const values = { name: String(formData.get("name") ?? ""), description: String(formData.get("description") ?? "") };
   if (!goalId.success) return { error: "invalidInput" };
   if (!parsed.success) return { error: "invalidInput", fieldErrors: toFieldErrors(parsed.error), values };
+  const verdict = await moderateText(`${parsed.data.name} ${parsed.data.description ?? ""}`, { kind: "group" });
+  if (verdict.decision === "block") return { error: "contentBlocked", values };
 
   const { data, error } = await ctx.supabase.rpc("create_group", {
     p_goal_id: goalId.data,
@@ -79,6 +84,9 @@ export async function createGroup(_prev: FormState, formData: FormData): Promise
     p_join_policy: parsed.data.joinPolicy,
   });
   if (error || !data) return { error: groupError(error), values };
+  if (verdict.decision === "review") {
+    await ctx.supabase.rpc("flag_my_content", { p_target_type: "group", p_target_id: data, p_categories: verdict.categories });
+  }
   redirect(`/${readLocale(formData)}/groups/${data}`);
 }
 
@@ -148,6 +156,8 @@ export async function updateGroup(_prev: FormState, formData: FormData): Promise
   });
   if (!groupId.success) return { error: "invalidInput" };
   if (!parsed.success) return { error: "invalidInput", fieldErrors: toFieldErrors(parsed.error) };
+  const verdict = await moderateText(`${parsed.data.name} ${parsed.data.description ?? ""}`, { kind: "group" });
+  if (verdict.decision === "block") return { error: "contentBlocked" };
   const { error } = await ctx.supabase.rpc("update_group", {
     p_group_id: groupId.data,
     p_name: parsed.data.name,
@@ -156,8 +166,41 @@ export async function updateGroup(_prev: FormState, formData: FormData): Promise
     p_join_policy: parsed.data.joinPolicy,
   });
   if (error) return { error: groupError(error) };
+  if (verdict.decision === "review") {
+    await ctx.supabase.rpc("flag_my_content", { p_target_type: "group", p_target_id: groupId.data, p_categories: verdict.categories });
+  }
   refresh();
   return { ok: true };
+}
+
+/**
+ * Send a chat message. Runs text moderation first; the photo (if any) was
+ * already resized and uploaded by the browser into the group's folder, which
+ * the table's check constraint and storage policies enforce.
+ */
+export async function sendMessage(
+  groupId: string,
+  body: string,
+  imagePath: string | null,
+): Promise<{ message?: GroupMessage; error?: ErrorKey }> {
+  const ctx = await signedIn();
+  if (!ctx) return { error: "notSignedIn" };
+  const text = body.trim();
+  if (!uuid.safeParse(groupId).success || text.length > 2000 || (!text && !imagePath)) return { error: "invalidInput" };
+  if (imagePath && !imagePath.startsWith(`${groupId}/`)) return { error: "invalidInput" };
+  const verdict = await moderateText(text, { kind: "message" });
+  if (verdict.decision === "block") return { error: "contentBlocked" };
+
+  const { data, error } = await ctx.supabase
+    .from("group_messages")
+    .insert({ group_id: groupId, body: text || null, image_path: imagePath })
+    .select("id, group_id, sender_id, body, image_path, created_at, hidden_at")
+    .single();
+  if (error) return { error: groupError(error) };
+  if (verdict.decision === "review") {
+    await ctx.supabase.rpc("flag_my_content", { p_target_type: "message", p_target_id: data.id, p_categories: verdict.categories });
+  }
+  return { message: data };
 }
 
 const planSchema = z.object({
@@ -259,15 +302,6 @@ export async function removeChecklistItem(itemId: string): Promise<void> {
   if (!ctx || !uuid.safeParse(itemId).success) return;
   await ctx.supabase.from("group_checklist_items").delete().eq("id", itemId);
   refresh();
-}
-
-export async function reportMessage(messageId: string, reason: ReportReason): Promise<FormState> {
-  const ctx = await signedIn();
-  if (!ctx) return { error: "notSignedIn" };
-  if (!uuid.safeParse(messageId).success || !REPORT_REASONS.includes(reason)) return { error: "invalidInput" };
-  const { error } = await ctx.supabase.rpc("report_message", { p_message_id: messageId, p_reason: reason });
-  if (error) return { error: groupError(error) };
-  return { ok: true };
 }
 
 export async function dismissStoryPrompt(groupId: string): Promise<void> {

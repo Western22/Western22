@@ -197,7 +197,7 @@ begin
   assert (select unread_count from public.my_groups()) = 0, 'read';
   perform public.report_message((select id from public.group_messages where body = 'buy cheap pills'), 'spam');
   perform public.report_message((select id from public.group_messages where body = 'buy cheap pills'), 'spam');  -- once per person
-  assert (select count(*) from public.message_reports) = 1, 'one report per person';
+  assert (select count(*) from public.reports where target_type = 'message') = 1, 'one report per person';
 end $$;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 do $$ begin perform public.report_message((select id from public.group_messages where body = 'buy cheap pills'), 'spam'); end $$;

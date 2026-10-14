@@ -12,14 +12,30 @@ import type { Messages } from "@/i18n/messages/en";
  * Home: the feed for signed-in people, the landing page for everyone else.
  * The landing page is the static fallback while the session is checked.
  */
-export default async function HomePage({ params }: PageProps<"/[locale]">) {
+export default async function HomePage({ params, searchParams }: PageProps<"/[locale]">) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const t = await getMessages(locale);
   return (
-    <Suspense fallback={<Landing locale={locale} t={t} />}>
-      <Home locale={locale} t={t} />
-    </Suspense>
+    <>
+      <Suspense fallback={null}>
+        <DeletedNotice searchParams={searchParams} text={t.settings.data.deleted} />
+      </Suspense>
+      <Suspense fallback={<Landing locale={locale} t={t} />}>
+        <Home locale={locale} t={t} />
+      </Suspense>
+    </>
+  );
+}
+
+/** Confirmation after account deletion redirects here with ?deleted=1. */
+async function DeletedNotice({ searchParams, text }: { searchParams: Promise<Record<string, string | string[] | undefined>>; text: string }) {
+  const { deleted } = await searchParams;
+  if (deleted !== "1") return null;
+  return (
+    <p role="status" className="bg-muted mb-4 rounded-xl p-3 text-sm">
+      {text}
+    </p>
   );
 }
 
