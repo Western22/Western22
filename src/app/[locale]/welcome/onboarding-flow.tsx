@@ -438,7 +438,7 @@ export function OnboardingFlow({ locale, profile, featured, initialItems, t }: P
                       aria-pressed={on}
                       onClick={() => setTravelStyles(on ? travelStyles.filter((s) => s !== style) : [...travelStyles, style])}
                       className={cn(
-                        "flex flex-col items-start gap-1 rounded-2xl border-2 p-4 text-left transition-all active:scale-[0.98]",
+                        "flex flex-col items-start gap-1 rounded-2xl border-2 p-4 text-start transition-all active:scale-[0.98]",
                         "focus-visible:ring-ring/50 outline-none focus-visible:ring-[3px]",
                         on ? "border-primary bg-background shadow-md" : "bg-background/70 hover:border-primary/50 border-transparent",
                       )}
@@ -464,7 +464,7 @@ export function OnboardingFlow({ locale, profile, featured, initialItems, t }: P
             {items.length > 0 && (
               <ul className="flex flex-wrap gap-2" aria-label={format(o.dreams.added, { count: items.length, target: FIRST_ITEMS_TARGET })}>
                 {items.map((item) => (
-                  <li key={item.itemId} className="animate-pop bg-primary text-primary-foreground flex items-center gap-1 rounded-full py-1 pr-1 pl-3 text-sm shadow-sm">
+                  <li key={item.itemId} className="animate-pop bg-primary text-primary-foreground flex items-center gap-1 rounded-full py-1 pe-1 ps-3 text-sm shadow-sm">
                     {item.title}
                     <button
                       type="button"
@@ -491,7 +491,7 @@ export function OnboardingFlow({ locale, profile, featured, initialItems, t }: P
                 query.trim().length >= 3 ? (
                   <button
                     type="button"
-                    className="hover:bg-accent flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
+                    className="hover:bg-accent flex w-full items-center gap-2 px-3 py-2 text-start text-sm"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => addDream(query.trim(), null)}
                   >
@@ -514,7 +514,7 @@ export function OnboardingFlow({ locale, profile, featured, initialItems, t }: P
                       disabled={pending}
                       onClick={() => (item ? removeDream(item) : addDream(goal.title, goal.goal_id))}
                       className={cn(
-                        "relative flex h-full w-full flex-col items-start gap-2 rounded-2xl border-2 p-3 text-left transition-all active:scale-[0.98]",
+                        "relative flex h-full w-full flex-col items-start gap-2 rounded-2xl border-2 p-3 text-start transition-all active:scale-[0.98]",
                         "focus-visible:ring-ring/50 outline-none focus-visible:ring-[3px]",
                         added ? "border-primary bg-background shadow-md" : "bg-background/70 hover:border-primary/50 border-transparent",
                       )}
@@ -527,7 +527,7 @@ export function OnboardingFlow({ locale, profile, featured, initialItems, t }: P
                         <span className="text-muted-foreground text-xs">{format(o.dreams.wanted, { count: goal.wanted_count })}</span>
                       )}
                       {added && (
-                        <span className="animate-pop bg-primary text-primary-foreground absolute top-2 right-2 rounded-full p-1">
+                        <span className="animate-pop bg-primary text-primary-foreground absolute top-2 end-2 rounded-full p-1">
                           <Check className="size-3" aria-hidden />
                         </span>
                       )}
@@ -582,7 +582,7 @@ export function OnboardingFlow({ locale, profile, featured, initialItems, t }: P
               {o.back}
             </Button>
           )}
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ms-auto flex items-center gap-2">
             <Button variant="ghost" disabled={pending} onClick={step === "dreams" ? finish : goNext}>
               {o.skip}
             </Button>

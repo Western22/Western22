@@ -102,7 +102,7 @@ async function Group({
         href={`/${locale}/groups`}
         className="text-muted-foreground flex items-center gap-1 self-start text-sm underline-offset-4 hover:underline"
       >
-        <ArrowLeft className="size-4" aria-hidden />
+        <ArrowLeft className="size-4 rtl:rotate-180" aria-hidden />
         {g.myGroups}
       </Link>
       <header className="flex flex-col gap-1">

@@ -8,6 +8,17 @@ export type Locale = (typeof locales)[number];
 
 export const defaultLocale: Locale = "en";
 
+/**
+ * Right-to-left scripts. None is live yet, but layouts use logical Tailwind
+ * classes (ms-/me-/ps-/pe-/start-/end-/text-start), so adding Arabic or
+ * Hebrew is a messages file plus adding the code to `locales`.
+ */
+const RTL_LANGUAGES = new Set(["ar", "he", "fa", "ur"]);
+
+export function localeDirection(locale: string): "ltr" | "rtl" {
+  return RTL_LANGUAGES.has(locale.split("-")[0]) ? "rtl" : "ltr";
+}
+
 /** Cookie the proxy reads to remember a visitor's chosen language. */
 export const LOCALE_COOKIE = "NEXT_LOCALE";
 

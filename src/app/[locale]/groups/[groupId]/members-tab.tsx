@@ -84,7 +84,7 @@ export async function MembersTab({ ctx, locale, t }: { ctx: GroupContext; locale
                       name
                     )}
                     {member.role === "owner" && (
-                      <span className="bg-primary/10 text-primary ml-2 rounded-full px-2 py-0.5 text-xs">{m.owner}</span>
+                      <span className="bg-primary/10 text-primary ms-2 rounded-full px-2 py-0.5 text-xs">{m.owner}</span>
                     )}
                   </p>
                   <p className="text-muted-foreground text-xs">{format(m.joinedOn, { date: dateFormat.format(new Date(member.joined_at)) })}</p>

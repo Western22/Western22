@@ -431,7 +431,16 @@ export type Database = {
       };
       // Owner-only. Writes go through update_privacy_settings / acknowledge_safety_tips.
       profile_settings: {
-        Row: { user_id: string; hide_from_matching: boolean; location_precision: LocationPrecision; safety_tips_seen_at: string | null; updated_at: string };
+        Row: {
+          user_id: string;
+          hide_from_matching: boolean;
+          location_precision: LocationPrecision;
+          safety_tips_seen_at: string | null;
+          updated_at: string;
+          // 0011: null = automatic (from home country).
+          currency: string | null;
+          units: "metric" | "imperial" | null;
+        };
         Insert: never;
         Update: never;
         Relationships: [];
@@ -543,6 +552,26 @@ export type Database = {
           updated_at: string;
         };
         Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      // 0011: daily reference rates; units of `currency` per 1 USD.
+      exchange_rates: {
+        Row: { currency: string; per_usd: number; rate_date: string; source: string; updated_at: string };
+        Insert: { currency: string; per_usd: number; rate_date: string; source: string; updated_at?: string };
+        Update: never;
+        Relationships: [];
+      };
+      // 0011: server-only translation cache and usage log (secret key).
+      content_translations: {
+        Row: { source_hash: string; target_lang: string; translated: string; source_lang: string | null; provider: string; created_at: string };
+        Insert: { source_hash: string; target_lang: string; translated: string; source_lang?: string | null; provider: string };
+        Update: never;
+        Relationships: [];
+      };
+      translation_usage: {
+        Row: { id: number; user_id: string; chars: number; cached: boolean; created_at: string };
+        Insert: { user_id: string; chars: number; cached?: boolean };
         Update: never;
         Relationships: [];
       };
@@ -845,6 +874,9 @@ export type Database = {
       };
       export_my_data: { Args: Record<string, never>; Returns: Json };
       prepare_account_deletion: { Args: Record<string, never>; Returns: { bucket_id: string; name: string }[] };
+      update_region_settings: { Args: { p_currency: string | null; p_units: string | null }; Returns: undefined };
+      translation_allowed: { Args: { p_user: string; p_chars: number }; Returns: boolean };
+      prune_translation_usage: { Args: Record<string, never>; Returns: undefined };
       my_notification_preferences: {
         Args: Record<string, never>;
         Returns: { type: NotificationType; in_app: boolean; email: boolean; push: boolean }[];

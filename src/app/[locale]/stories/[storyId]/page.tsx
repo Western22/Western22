@@ -10,6 +10,8 @@ import { getMessages } from "@/i18n/get-messages";
 import { StoryCard } from "@/components/stories/story-card";
 import { CommentForm, DeleteCommentButton, UntagButton } from "./comment-controls";
 import { ReportButton } from "@/components/safety/report-button";
+import { TranslatableText } from "@/components/translation/translatable-text";
+import { canTranslateInto } from "@/lib/translation";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -51,6 +53,7 @@ async function Story({ params }: { params: PageProps<"/[locale]/stories/[storyId
   ]);
   const s = t.stories;
   const timeFormat = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
+  const translatable = Boolean(user) && (await canTranslateInto(locale));
 
   return (
     <div className="flex flex-col gap-5 pb-10">
@@ -81,7 +84,18 @@ async function Story({ params }: { params: PageProps<"/[locale]/stories/[storyId
                         {timeFormat.format(new Date(c.created_at))}
                       </time>
                     </p>
-                    <p className="text-sm break-words whitespace-pre-line">{c.body}</p>
+                    {translatable && c.author_id !== user?.id ? (
+                      <TranslatableText
+                        kind="comment"
+                        id={c.id}
+                        text={c.body}
+                        locale={locale}
+                        className="text-sm break-words whitespace-pre-line"
+                        t={{ translate: t.translate, errors: t.errors }}
+                      />
+                    ) : (
+                      <p className="text-sm break-words whitespace-pre-line">{c.body}</p>
+                    )}
                     {user && c.author_id !== user.id && (
                       <ReportButton
                         targetType="comment"

@@ -8,12 +8,15 @@ import { cn } from "@/lib/utils";
 import { ReactionBar } from "./reaction-bar";
 import { AddFromStoryButton } from "./add-from-story-button";
 import { ReportButton } from "@/components/safety/report-button";
+import { TranslatableText } from "@/components/translation/translatable-text";
+import { canTranslateInto } from "@/lib/translation";
 
 /**
  * A story: author, goal, place, photos, caption, tags, reactions, comment
  * count and "Add to my bucket list". `reason` (feed only) says why it's shown.
+ * Signed-in readers get a Translate button on other people's stories.
  */
-export function StoryCard({
+export async function StoryCard({
   story,
   locale,
   t,
@@ -34,6 +37,7 @@ export function StoryCard({
   const mine = viewerId === story.author_id;
   const tagged = story.tagged.filter((p) => p.name);
   const storyHref = `/${locale}/stories/${story.id}`;
+  const translatable = Boolean(viewerId) && !mine && (await canTranslateInto(locale));
 
   return (
     <article className="bg-card flex flex-col overflow-hidden rounded-2xl border">
@@ -99,7 +103,17 @@ export function StoryCard({
       )}
 
       <div className="flex flex-col gap-3 p-4">
-        {linkToStory ? (
+        {translatable ? (
+          <TranslatableText
+            kind="story"
+            id={story.id}
+            text={story.body}
+            locale={locale}
+            href={linkToStory ? storyHref : undefined}
+            className="text-sm break-words whitespace-pre-line"
+            t={{ translate: t.translate, errors: t.errors }}
+          />
+        ) : linkToStory ? (
           <Link href={storyHref} className="text-sm break-words whitespace-pre-line hover:underline">
             {story.body}
           </Link>

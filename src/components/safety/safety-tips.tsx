@@ -20,7 +20,7 @@ export function SafetyTips({ locale, t }: { locale: Locale; t: Messages["safety"
         <ShieldCheck className="size-4" aria-hidden />
         {t.tipsTitle}
       </h2>
-      <ul className="flex list-disc flex-col gap-1 pl-5">
+      <ul className="flex list-disc flex-col gap-1 ps-5">
         {t.tips.map((tip) => (
           <li key={tip}>{tip}</li>
         ))}

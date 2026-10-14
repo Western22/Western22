@@ -1,3 +1,4 @@
+import { canTranslateInto } from "@/lib/translation";
 import { createClient } from "@/lib/supabase/server";
 import type { Locale } from "@/i18n/config";
 import type { Messages } from "@/i18n/messages/en";
@@ -38,7 +39,8 @@ export async function ChatTab({ ctx, locale, t }: { ctx: GroupContext; locale: L
       truncated={messages.length === INITIAL_MESSAGES}
       initialMembers={chatMembers}
       locale={locale}
-      t={{ chat: t.groups.chat, errors: t.errors, report: t.report }}
+      canTranslate={await canTranslateInto(locale)}
+      t={{ chat: t.groups.chat, errors: t.errors, report: t.report, translate: t.translate }}
     />
   );
 }

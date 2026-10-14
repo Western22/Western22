@@ -8,6 +8,8 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { GoalArt } from "@/components/goal-art";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getViewerRegion } from "@/lib/region-server";
+import { formatDistance, type Region } from "@/lib/region";
 import {
   EXPLORE_SORTS,
   GOAL_CATEGORIES,
@@ -112,6 +114,7 @@ async function Explore({
     getCurrentUser(),
   ]);
   if (error) throw new Error("Could not load goals");
+  const region = await getViewerRegion(locale);
 
   let nearMessage: string | null = null;
   if (filters.sort === "near" && goals.length === 0) {
@@ -201,7 +204,7 @@ async function Explore({
       ) : (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {goals.slice(0, PAGE_SIZE).map((goal) => (
-            <GoalCard key={goal.goal_id} goal={goal} locale={locale} t={t} showDistance={filters.sort === "near"} />
+            <GoalCard key={goal.goal_id} goal={goal} locale={locale} region={region} t={t} showDistance={filters.sort === "near"} />
           ))}
         </ul>
       )}
@@ -215,12 +218,25 @@ async function Explore({
   );
 }
 
-function GoalCard({ goal, locale, t, showDistance }: { goal: ExploreGoal; locale: string; t: Messages; showDistance: boolean }) {
+function GoalCard({
+  goal,
+  locale,
+  region,
+  t,
+  showDistance,
+}: {
+  goal: ExploreGoal;
+  locale: string;
+  region: Region;
+  t: Messages;
+  showDistance: boolean;
+}) {
+  // Kilometres or miles, per the viewer's settings or home country.
   const distance =
     showDistance && goal.distance_km !== null
       ? goal.distance_km < 10
-        ? t.explore.nearby
-        : format(t.explore.distance, { km: goal.distance_km.toLocaleString(locale) })
+        ? format(t.explore.nearby, { distance: formatDistance(10, region) })
+        : format(t.explore.distance, { distance: formatDistance(goal.distance_km, region) })
       : null;
   return (
     <li>

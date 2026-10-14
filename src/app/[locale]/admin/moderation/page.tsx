@@ -114,7 +114,7 @@ async function Queue({
                   )}
                 </div>
                 {item.content_exists ? (
-                  <blockquote className="bg-muted/50 rounded-lg border-l-4 px-3 py-2 break-words whitespace-pre-line">{item.preview}</blockquote>
+                  <blockquote className="bg-muted/50 rounded-lg border-s-4 px-3 py-2 break-words whitespace-pre-line">{item.preview}</blockquote>
                 ) : (
                   <p className="text-muted-foreground italic">{a.removed}</p>
                 )}
@@ -124,7 +124,7 @@ async function Queue({
                   {format(a.reported, { date: when.format(new Date(item.last_reported_at)) })}
                 </p>
                 {item.details.length > 0 && (
-                  <ul className="text-muted-foreground list-disc pl-5">
+                  <ul className="text-muted-foreground list-disc ps-5">
                     {item.details.map((d, i) => (
                       <li key={i}>{d}</li>
                     ))}

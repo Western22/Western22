@@ -116,7 +116,7 @@ export function StoryComposer({
                   type="button"
                   onClick={() => setPhotos((prev) => prev.filter((p) => p !== url))}
                   aria-label={s.removePhoto}
-                  className="bg-background absolute -top-1.5 -right-1.5 rounded-full border p-0.5"
+                  className="bg-background absolute -top-1.5 -end-1.5 rounded-full border p-0.5"
                 >
                   <X className="size-3.5" />
                 </button>

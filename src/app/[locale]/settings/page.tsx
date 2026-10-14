@@ -8,12 +8,15 @@ import { requireOnboardedProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { idVerificationProvider } from "@/lib/verification/id-provider";
 import { VerifiedBadge } from "@/components/safety/verified-badge";
-import { isLocale, type Locale } from "@/i18n/config";
+import { isLocale, locales, type Locale } from "@/i18n/config";
 import { getMessages } from "@/i18n/get-messages";
 import type { Messages } from "@/i18n/messages/en";
 import { PhoneVerification } from "./phone-verification";
 import { DeleteAccountForm, PrivacyForm } from "./settings-forms";
 import { NotificationSettingsForm } from "./notification-settings";
+import { RegionSettingsForm } from "./region-settings";
+import { getExchangeRates } from "@/lib/region-server";
+import { resolveRegion } from "@/lib/region";
 import { PushToggle } from "@/components/notifications/push-toggle";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/settings">): Promise<Metadata> {
@@ -39,12 +42,19 @@ export default async function SettingsPage({ params }: PageProps<"/[locale]/sett
 async function Settings({ locale, t }: { locale: Locale; t: Messages }) {
   const profile = await requireOnboardedProfile(locale);
   const supabase = await createClient();
-  const [{ data: settings }, { data: isModerator }, { data: prefs }, { data: notify }] = await Promise.all([
-    supabase.from("profile_settings").select("hide_from_matching, location_precision").eq("user_id", profile.id).maybeSingle(),
+  const [{ data: settings }, { data: isModerator }, { data: prefs }, { data: notify }, rates] = await Promise.all([
+    supabase
+      .from("profile_settings")
+      .select("hide_from_matching, location_precision, currency, units")
+      .eq("user_id", profile.id)
+      .maybeSingle(),
     supabase.rpc("is_moderator"),
     supabase.rpc("my_notification_preferences"),
     supabase.from("notification_settings").select("timezone, quiet_start, quiet_end, email_paused").eq("user_id", profile.id).maybeSingle(),
+    getExchangeRates(),
   ]);
+  // What "Automatic" means for this person: from their home country.
+  const auto = resolveRegion({ locale, currency: null, units: null, homeCountry: profile.home_country, rates: new Map(Object.entries(rates)) });
   const ns = t.notifications.settings;
   const s = t.settings;
   const v = t.verification;
@@ -63,6 +73,21 @@ async function Settings({ locale, t }: { locale: Locale; t: Messages }) {
         <PhoneVerification verified={Boolean(profile.phone_verified_at)} t={{ verification: v, errors: t.errors }} />
         {/* TODO(id-verification): offer "Verify my ID" once a provider is configured. */}
         {!idVerificationProvider() && <p className="text-muted-foreground text-xs">{v.idSoon}</p>}
+      </section>
+
+      <section id="region" aria-labelledby="region-title" className="flex scroll-mt-4 flex-col gap-3">
+        <h2 id="region-title" className="text-lg font-semibold">
+          {s.region.title}
+        </h2>
+        <RegionSettingsForm
+          locale={locale}
+          languages={locales}
+          currencies={["USD", ...Object.keys(rates)].filter((c, i, all) => all.indexOf(c) === i)}
+          currency={settings?.currency ?? null}
+          units={(settings?.units as "metric" | "imperial" | null) ?? null}
+          auto={{ currency: auto.currency, units: auto.units }}
+          t={{ region: s.region, errors: t.errors }}
+        />
       </section>
 
       <section aria-labelledby="privacy-title" className="flex flex-col gap-3">

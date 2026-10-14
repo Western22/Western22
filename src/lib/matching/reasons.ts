@@ -2,15 +2,23 @@ import type { BucketBudget, BucketTimeframe, Match } from "@/lib/supabase/databa
 import { languageName } from "@/lib/onboarding";
 import { format } from "@/i18n/format";
 import type { Messages } from "@/i18n/messages/en";
+import { formatDistance, type Region } from "@/lib/region";
 
 type MyItem = { timeframe: BucketTimeframe; budget: BucketBudget | null };
 
 /**
  * Human reasons for a match ("Both aiming for 2027", "Speaks Spanish",
- * "200 km away"), most meaningful first. Built from the components
+ * "200 km away" or "124 mi away"), most meaningful first. Built from the components
  * find_matches returns, so they always agree with the score.
  */
-export function matchReasons(match: Match, mine: MyItem, t: Messages, locale: string, now = new Date()): string[] {
+export function matchReasons(
+  match: Match,
+  mine: MyItem,
+  t: Messages,
+  region: Pick<Region, "locale" | "units">,
+  now = new Date(),
+): string[] {
+  const { locale } = region;
   const r = t.matches.reasons;
   const reasons: string[] = [];
   const year = now.getUTCFullYear();
@@ -33,7 +41,11 @@ export function matchReasons(match: Match, mine: MyItem, t: Messages, locale: st
   }
 
   if (match.distance_km !== null) {
-    reasons.push(match.distance_km <= 25 ? r.underKm : format(r.km, { km: match.distance_km.toLocaleString(locale) }));
+    reasons.push(
+      match.distance_km <= 25
+        ? format(r.underKm, { distance: formatDistance(25, region) })
+        : format(r.km, { distance: formatDistance(match.distance_km, region) }),
+    );
   }
   if (match.is_worldwide && (match.distance_km === null || match.distance_km > 300)) reasons.push(r.worldwide);
 

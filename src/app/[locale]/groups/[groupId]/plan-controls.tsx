@@ -67,7 +67,7 @@ export function StatusControl({ groupId, status, isOwner, t }: { groupId: string
 export function DateOptionActions({ optionId, voted, canRemove, t }: { optionId: string; voted: boolean; canRemove: boolean; t: T }) {
   const [pending, startTransition] = useTransition();
   return (
-    <span className="ml-auto flex gap-1">
+    <span className="ms-auto flex gap-1">
       <Button
         type="button"
         size="sm"
@@ -196,7 +196,7 @@ export function ChecklistRow({
       />
       <label htmlFor={id} className={cn("flex-1 text-sm", done && "text-muted-foreground line-through")}>
         {item.title}
-        {done && doneByName && <span className="text-muted-foreground ml-1 text-xs no-underline">· {doneByName}</span>}
+        {done && doneByName && <span className="text-muted-foreground ms-1 text-xs no-underline">· {doneByName}</span>}
       </label>
       {canRemove && (
         <Button

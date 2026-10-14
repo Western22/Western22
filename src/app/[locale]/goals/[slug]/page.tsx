@@ -82,7 +82,7 @@ async function Goal({ params }: { params: PageProps<"/[locale]/goals/[slug]">["p
       <div className="relative overflow-hidden rounded-3xl">
         <GoalArt category={goal.category_slug} photoUrl={goal.photo_url} className="h-48 w-full sm:h-64" emojiClassName="text-7xl" />
         {goal.photo_credit && (
-          <p className="absolute right-2 bottom-2 rounded bg-black/50 px-2 py-0.5 text-xs text-white">
+          <p className="absolute end-2 bottom-2 rounded bg-black/50 px-2 py-0.5 text-xs text-white">
             {format(g.photoCredit, { credit: goal.photo_credit })}
           </p>
         )}

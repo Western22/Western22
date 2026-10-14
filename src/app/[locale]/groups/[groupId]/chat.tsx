@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "@/lib/supabase/client";
 import { sendMessage } from "@/lib/actions/groups";
 import { ReportButton } from "@/components/safety/report-button";
+import { TranslatableText } from "@/components/translation/translatable-text";
 import { MAX_PHOTO_BYTES, shrinkToJpeg } from "@/lib/images";
 import type { GroupMessage } from "@/lib/supabase/database.types";
 import type { Messages } from "@/i18n/messages/en";
@@ -16,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 export type ChatMember = { id: string; name: string; avatarUrl: string | null; lastReadAt: string };
 
-type T = { chat: Messages["groups"]["chat"]; errors: Messages["errors"]; report: Messages["report"] };
+type T = { chat: Messages["groups"]["chat"]; errors: Messages["errors"]; report: Messages["report"]; translate: Messages["translate"] };
 
 /** Signed URLs for private chat photos last an hour; the page reloads long before that matters. */
 const SIGNED_URL_SECONDS = 3600;
@@ -36,6 +37,7 @@ export function Chat({
   truncated,
   initialMembers,
   locale,
+  canTranslate = false,
   t,
 }: {
   groupId: string;
@@ -44,6 +46,8 @@ export function Chat({
   truncated: boolean;
   initialMembers: ChatMember[];
   locale: string;
+  /** A translation service is set up for this language: show Translate on others' messages. */
+  canTranslate?: boolean;
   t: T;
 }) {
   const supabase = useMemo(() => createClient(), []);
@@ -185,7 +189,20 @@ export function Chat({
                         ) : (
                           <div aria-hidden className="bg-muted size-40 animate-pulse rounded-xl" />
                         ))}
-                      {m.body && <p className="break-words whitespace-pre-line">{m.body}</p>}
+                      {m.body &&
+                        (canTranslate && !mine && !m.hidden_at ? (
+                          <TranslatableText
+                            kind="message"
+                            id={m.id}
+                            text={m.body}
+                            locale={locale}
+                            className="break-words whitespace-pre-line"
+                            buttonClassName="text-[11px]"
+                            t={t}
+                          />
+                        ) : (
+                          <p className="break-words whitespace-pre-line">{m.body}</p>
+                        ))}
                     </div>
                     <span className="text-muted-foreground flex flex-wrap items-center gap-2 px-1 text-[11px]">
                       <time dateTime={m.created_at}>{timeFormat.format(new Date(m.created_at))}</time>
@@ -293,7 +310,7 @@ function Composer({
             type="button"
             onClick={() => pickPhoto(undefined)}
             aria-label={t.chat.removePhoto}
-            className="bg-background absolute -top-2 -right-2 rounded-full border p-0.5"
+            className="bg-background absolute -top-2 -end-2 rounded-full border p-0.5"
           >
             <X className="size-4" />
           </button>

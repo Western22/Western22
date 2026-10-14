@@ -39,7 +39,7 @@ export default async function GuidelinesPage({ params }: PageProps<"/[locale]/gu
           <h2 id={`${section.id}-title`} className="text-xl font-semibold">
             {section.title}
           </h2>
-          <ul className="flex list-disc flex-col gap-1.5 pl-5">
+          <ul className="flex list-disc flex-col gap-1.5 ps-5">
             {section.points.map((point) => (
               <li key={point} className="text-pretty">
                 {point}

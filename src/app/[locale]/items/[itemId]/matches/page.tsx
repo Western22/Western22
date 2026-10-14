@@ -8,6 +8,7 @@ import { requireOnboardedProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { MATCH_CONFIG, MATCH_LIMIT } from "@/lib/matching/config";
 import { matchReasons } from "@/lib/matching/reasons";
+import { getViewerRegion } from "@/lib/region-server";
 import type { Match } from "@/lib/supabase/database.types";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getMessages } from "@/i18n/get-messages";
@@ -46,10 +47,11 @@ async function Matches({ params }: { params: PageProps<"/[locale]/items/[itemId]
     .maybeSingle();
   if (!item) notFound();
 
-  const [{ data: matches, error }, { data: goalTitle }, { data: hasLocation }] = await Promise.all([
+  const [{ data: matches, error }, { data: goalTitle }, { data: hasLocation }, region] = await Promise.all([
     supabase.rpc("find_matches", { p_item_id: item.id, p_config: MATCH_CONFIG, p_limit: MATCH_LIMIT }),
     supabase.rpc("goal_title", { p_goal_id: item.goal_id, p_locale: locale }),
     supabase.rpc("has_my_location"),
+    getViewerRegion(locale),
   ]);
   if (error) throw new Error("Could not load matches");
   const m = t.matches;
@@ -60,7 +62,7 @@ async function Matches({ params }: { params: PageProps<"/[locale]/items/[itemId]
         href={`/${locale}/items`}
         className="text-muted-foreground flex items-center gap-1 self-start text-sm underline-offset-4 hover:underline"
       >
-        <ArrowLeft className="size-4" aria-hidden />
+        <ArrowLeft className="size-4 rtl:rotate-180" aria-hidden />
         {m.backToList}
       </Link>
       <div>
@@ -90,7 +92,7 @@ async function Matches({ params }: { params: PageProps<"/[locale]/items/[itemId]
             <MatchCard
               key={match.profile_id}
               match={match}
-              reasons={matchReasons(match, item, t, locale)}
+              reasons={matchReasons(match, item, t, region)}
               myItemId={item.id}
               locale={locale}
               t={t}

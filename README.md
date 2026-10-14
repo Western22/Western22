@@ -57,6 +57,13 @@ per-type In app / Email / Push settings, quiet hours in each person's time zone,
 one-click unsubscribe; and a weekly "Your bucket list digest" email. A scheduler
 calls `/api/cron/notifications` to send (see `docs/increment-8-notifications.md`).
 
+**Increment 9 (going global, part 1):** a Translate button on stories, comments
+and chat messages (DeepL by default, Google or LibreTranslate by setting; cached
+and rate-limited); budgets shown in each person's currency (European Central
+Bank daily rates) and distances in km or miles; a "Language and region" section
+in Settings; layouts ready for right-to-left languages. The move to next-intl and
+the seven new languages follow (see `docs/increment-9-global.md`).
+
 Every table has Row Level Security.
 
 ## Stack
@@ -96,7 +103,7 @@ recorded on the profile when the OAuth callback lands in `/auth/confirm`.
 ```bash
 npx tsc --noEmit && npm run lint && npm run build
 npx supabase db reset       # the RLS test expects an empty database
-supabase/tests/run_all.sh   # rls, matching, groups, social, trust_safety, notifications
+supabase/tests/run_all.sh   # rls, matching, groups, social, trust_safety, notifications, localization
 ```
 
 Each test runs in a transaction, rolls back, and prints `ALL ... CHECKS PASSED`;
@@ -118,7 +125,10 @@ Group chat needs the Realtime service: don't exclude `realtime` when running
 6. Notifications: set `CRON_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM`, the three VAPID
    variables and `NEXT_PUBLIC_SITE_URL`, then schedule `POST /api/cron/notifications`
    every minute (Supabase pg_cron + pg_net; steps in `docs/increment-8-notifications.md`).
-7. Magic links on the hosted project use Supabase's built-in email sender, which is
+7. Going global: set `DEEPL_API_KEY` for the Translate button (or `TRANSLATION_PROVIDER`
+   plus Google's or LibreTranslate's settings), and schedule `POST /api/cron/exchange-rates`
+   once a day after 16:00 CET (steps in `docs/increment-9-global.md`).
+8. Magic links on the hosted project use Supabase's built-in email sender, which is
    rate-limited and meant for testing; production needs a custom SMTP provider.
 
 ## Layout
@@ -277,4 +287,4 @@ typed as `Messages`, and register it in `src/i18n/get-messages.ts`.
 - `TODO(storage)`: photos removed in the story composer stay in the bucket; clean up with a scheduled job.
 - `TODO(goal-photos)`: seeded goals use category artwork; add licensed photos with credits.
 - `TODO(feed)`: paginate Explore; send signed-in people who haven't onboarded to /welcome from home.
-- `TODO(i18n)`: `not-found` and `error` pages are English-only for now.
+- `TODO(i18n)`: `not-found` and `error` pages are English-only until next-intl is in.

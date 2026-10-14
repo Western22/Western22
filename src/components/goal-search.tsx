@@ -53,7 +53,7 @@ export function GoalSearch({ locale, value, onChange, onSelect, placeholder, wan
 
   return (
     <div className="relative">
-      <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" aria-hidden />
+      <Search className="text-muted-foreground pointer-events-none absolute top-1/2 start-3 size-4 -translate-y-1/2" aria-hidden />
       <Input
         id={id}
         name={name}
@@ -62,7 +62,7 @@ export function GoalSearch({ locale, value, onChange, onSelect, placeholder, wan
         autoComplete="off"
         maxLength={140}
         placeholder={placeholder}
-        className="h-11 pl-9 text-base"
+        className="h-11 ps-9 text-base"
         role="combobox"
         aria-expanded={!!showList}
         aria-controls={listId}
@@ -83,7 +83,7 @@ export function GoalSearch({ locale, value, onChange, onSelect, placeholder, wan
             <li key={goal.goal_id} role="option" aria-selected={false}>
               <button
                 type="button"
-                className={cn("hover:bg-accent flex w-full flex-col items-start px-3 py-2 text-left")}
+                className={cn("hover:bg-accent flex w-full flex-col items-start px-3 py-2 text-start")}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
                   onSelect(goal);

@@ -18,7 +18,7 @@ export function SiteHeader({ locale, t }: { locale: Locale; t: Messages }) {
   return (
     <header className="border-b">
       <nav className="mx-auto flex h-14 max-w-3xl items-center gap-1 px-4 sm:gap-2 [&_[data-slot=button]]:px-2 sm:[&_[data-slot=button]]:px-3">
-        <Link href={`/${locale}`} className="mr-auto font-semibold tracking-tight">
+        <Link href={`/${locale}`} className="me-auto font-semibold tracking-tight">
           {t.app.name}
         </Link>
         <Button asChild variant="ghost" size="sm">
@@ -121,7 +121,7 @@ function Badge({ count }: { count: number }) {
   return (
     <span
       aria-hidden
-      className="bg-primary text-primary-foreground absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold"
+      className="bg-primary text-primary-foreground absolute -top-1 -end-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold"
     >
       {count > 9 ? "9+" : count}
     </span>

@@ -5,6 +5,8 @@ import type { Messages } from "@/i18n/messages/en";
 import { format } from "@/i18n/format";
 import type { GroupContext } from "./page";
 import { SafetyTips } from "@/components/safety/safety-tips";
+import { getExchangeRates, getViewerRegion } from "@/lib/region-server";
+import { convertedAmount } from "@/lib/region";
 import { SharePlan } from "@/components/safety/share-plan";
 import { ChecklistAddForm, ChecklistRow, DateOptionActions, PlanDetailsForm, ProposeDatesForm, StatusControl } from "./plan-controls";
 
@@ -38,6 +40,12 @@ export async function PlanTab({ ctx, locale, t }: { ctx: GroupContext; locale: L
     from === to ? dateFormat.format(new Date(from)) : dateFormat.formatRange(new Date(from), new Date(to));
   const sortedOptions = [...(options ?? [])].sort((a, b) => b.votes.length - a.votes.length || a.starts_on.localeCompare(b.starts_on));
   const tPlan = { plan: p, status: t.groups.status, errors: t.errors };
+  // The group's budget in the viewer's own currency, when it differs.
+  const [region, rates] = await Promise.all([getViewerRegion(locale), getExchangeRates()]);
+  const budgetInMine =
+    plan?.budget_amount != null && plan.budget_currency
+      ? convertedAmount(Number(plan.budget_amount), plan.budget_currency, region, rates, t.items.budgetRange.approx)
+      : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -88,6 +96,11 @@ export async function PlanTab({ ctx, locale, t }: { ctx: GroupContext; locale: L
           }}
           t={tPlan}
         />
+        {budgetInMine && (
+          <p className="text-muted-foreground text-sm" data-testid="budget-converted">
+            {format(p.budgetInYourCurrency, { amount: budgetInMine })}
+          </p>
+        )}
         <p className="text-muted-foreground text-xs">{t.safety.publicPlaces}</p>
       </section>
 

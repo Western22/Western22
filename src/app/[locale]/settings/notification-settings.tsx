@@ -55,7 +55,7 @@ export function NotificationSettingsForm({
       <table className="w-full text-sm">
         <thead>
           <tr className="text-muted-foreground text-xs">
-            <th className="py-1 text-left font-normal">
+            <th className="py-1 text-start font-normal">
               <span className="sr-only">{ns.title}</span>
             </th>
             {CHANNELS.map((c) => (
@@ -68,7 +68,7 @@ export function NotificationSettingsForm({
         <tbody className="divide-y">
           {prefs.map((p) => (
             <tr key={p.type}>
-              <th scope="row" className="py-2 pr-2 text-left font-normal text-pretty">
+              <th scope="row" className="py-2 pe-2 text-start font-normal text-pretty">
                 {ns.types[p.type]}
               </th>
               {CHANNELS.map((c) => (
