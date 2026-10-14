@@ -9,7 +9,13 @@ bucket-list items with an Explore feed.
 Google, Apple), an 18+ gate, a five-step onboarding (name and photo, home and
 languages, interests and travel style, first 3 bucket-list goals), canonical
 goals with multilingual matching, and public profiles at `/u/<username>` with
-badges. Every table has Row Level Security.
+badges.
+
+**Increment 3 (bucket list):** free-text items matched to canonical goals
+(exact, then trigram fuzzy match, else a new goal pending review), item details
+(timeframe, flexibility, budget, status, public / buddies / private), goal pages,
+Explore (category, region, season, trending, near me) and 212 seeded goals.
+Every table has Row Level Security.
 
 ## Stack
 
@@ -72,8 +78,9 @@ src/
     welcome/               onboarding flow (age check if needed, then 5 steps)
     u/[username]/          public profile: bio, languages, stats, badges, active list
     profile/               edit profile + private "use my location"
-    items/                 my bucket list (add, mark done, delete)
-    explore/               public items from everyone
+    items/                 my bucket list (add from free text, edit details, delete)
+    goals/[slug]/          goal page: description, counts, best time, add button
+    explore/               browse goals: category, region, season, trending, near me
   app/auth/confirm/        handles links from Supabase auth emails
   lib/actions/             Server Actions (validated with zod, protected by RLS)
   lib/auth.ts              data access layer: getCurrentUser, requireOnboardedProfile (verifies JWT)
@@ -82,7 +89,9 @@ src/
   lib/supabase/            server, browser and proxy clients + database types
 supabase/
   migrations/              0001 profiles + private location, 0002 bucket items,
-                           0003 onboarding fields, goals, avatars bucket, moderators
+                           0003 onboarding fields, goals, avatars bucket, moderators,
+                           0004 item details, fuzzy matching, follows, explore/goal RPCs,
+                           0005 seed of 212 goals
   tests/rls_test.sql       RLS checks (two users + anonymous)
 ```
 
@@ -100,7 +109,8 @@ supabase/
   to a canonical goal (or creates a pending goal for moderators to review).
 - `adult_confirmed_at` and `onboarded_at` can only be set through RPCs, and
   onboarding can't complete without the 18+ confirmation.
-- Private bucket items are visible only to their owner.
+- Bucket items are public, buddies-only (mutual follows, via `are_buddies()`)
+  or private (owner only). Goal counts include every item but never say whose.
 - All timestamps are `timestamptz` (UTC). `target_date` is a calendar date with no time.
 
 ## Adding a language
@@ -115,6 +125,8 @@ typed as `Messages`, and register it in `src/i18n/get-messages.ts`.
   Nominatim server (1 request/second policy). At scale, self-host it and set `NOMINATIM_URL`.
 - `TODO(age-gate)`: delete accounts that never confirm 18+ (needs a service-role job).
 - `TODO(badges)`: persist awarded badges once notifications need them.
-- `TODO(goals)`: drop the deprecated `bucket_items.category` column.
+- `TODO(follows)`: follow/unfollow UI (until then, buddies-only items are visible only to you).
+- `TODO(stories)`, `TODO(groups)`: goal pages show empty states until posts and groups exist.
+- `TODO(goal-photos)`: seeded goals use category artwork; add licensed photos with credits.
 - `TODO(feed)`: paginate Explore.
 - `TODO(i18n)`: `not-found` and `error` pages are English-only for now.

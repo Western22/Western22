@@ -35,6 +35,12 @@ select public.complete_onboarding();
 select public.add_bucket_item('  see the NORTHERN lights ', null, 'public', 'en');
 select public.add_bucket_item('Escalar el Kilimanjaro', null, 'public', 'es');
 select public.add_bucket_item('Secret dream of mine', null, 'private', 'en');
+-- Fuzzy matches, a near miss that becomes a new goal, and a buddies-only item.
+select public.add_bucket_item('learn to play piano', null, 'public', 'en', 'this_year', 'fixed', 'under_500');
+select public.add_bucket_item('eat pizza in rome', null, 'public', 'en');
+select public.add_bucket_item('Write my book', null, 'buddies', 'en', 'one_to_three_years');
+insert into public.follows (follower_id, followee_id)
+values ('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000b');
 
 do $$
 declare
@@ -52,13 +58,45 @@ begin
   assert abs(lat - 5.6037) < 0.03 and abs(lng + 0.1870) < 0.03, 'snapped point stays within ~5 km';
   assert abs(lat / 0.045 - round(lat / 0.045)) < 1e-9, 'latitude is on the 0.045 grid';
 
-  assert (select count(*) from public.bucket_items) = 3, 'alice sees all her items';
+  assert (select count(*) from public.bucket_items) = 6, 'alice sees all her items';
   assert (select g.slug from public.bucket_items b join public.goals g on g.id = b.goal_id
           where b.title = 'see the NORTHERN lights') = 'see-the-northern-lights', 'title matched seeded goal';
   assert (select g.slug from public.bucket_items b join public.goals g on g.id = b.goal_id
           where b.title = 'Escalar el Kilimanjaro') = 'climb-mount-kilimanjaro', 'Spanish alias matched';
   assert (select g.status from public.bucket_items b join public.goals g on g.id = b.goal_id
           where b.title = 'Secret dream of mine') = 'pending', 'unknown title creates a pending goal';
+  assert (select g.slug from public.bucket_items b join public.goals g on g.id = b.goal_id
+          where b.title = 'learn to play piano') = 'learn-to-play-the-piano', 'close wording fuzzy-matches';
+  assert (select g.status from public.bucket_items b join public.goals g on g.id = b.goal_id
+          where b.title = 'eat pizza in rome') = 'pending', 'a different place does not fuzzy-match';
+  assert (select timeframe || flexibility || budget from public.bucket_items where title = 'learn to play piano')
+         = 'this_yearfixedunder_500', 'item details stored';
+  assert (select match from public.add_bucket_item('climb mount fuji', null, 'private')) = 'exact', 'match type reported';
+
+  begin
+    perform public.add_bucket_item('Learn to juggle', null, 'public', 'en', 'next_week');
+    raise exception 'invalid timeframe accepted';
+  exception when invalid_parameter_value then null;
+  end;
+  begin
+    update public.bucket_items set budget = 'a lot' where title = 'learn to play piano';
+    raise exception 'invalid budget accepted';
+  exception when check_violation then null;
+  end;
+  update public.bucket_items set budget = '2000_5000', visibility = 'buddies' where title = 'climb mount fuji';
+
+  -- Explore and goal pages.
+  assert exists (select 1 from public.explore_goals('en', null, null, 'dec_feb') where slug = 'see-the-northern-lights'), 'season filter';
+  assert not exists (select 1 from public.explore_goals('en', null, null, 'jun_aug') where slug = 'see-the-northern-lights'), 'out-of-season goal hidden';
+  assert not exists (select 1 from public.explore_goals('en', 'food', null, null, 'popular', 48) where category_slug <> 'food'), 'category filter';
+  assert (select count(*) from public.explore_goals('en', null, 'africa', null, 'popular', 48)) >= 20, 'region filter';
+  assert (select slug from public.explore_goals('en', null, null, null, 'near', 1)) = 'learn-to-cook-jollof-in-accra', 'near me starts with Accra';
+  assert (select slug from public.explore_goals('en', null, null, null, 'trending', 1)) in
+         ('see-the-northern-lights', 'climb-mount-kilimanjaro', 'learn-to-play-the-piano', 'write-a-book', 'climb-mount-fuji'), 'trending uses recent adds';
+  assert (select wanted_count from public.goal_details('learn-to-play-the-piano')) = 1, 'goal page wanted count';
+  assert (select my_item_id is not null from public.goal_details('learn-to-play-the-piano')), 'goal page knows my item';
+  assert exists (select 1 from public.goal_details((select g.slug from public.bucket_items b join public.goals g on g.id = b.goal_id
+                                                   where b.title = 'eat pizza in rome'))), 'creator sees own pending goal page';
 
   -- Same goal twice is rejected.
   begin
@@ -120,7 +158,25 @@ begin
   perform public.confirm_adult();
   perform public.complete_onboarding();
 
-  assert (select count(*) from public.bucket_items) = 2, 'bob sees only alice''s public items';
+  assert (select count(*) from public.bucket_items) = 4, 'bob sees only alice''s public items';
+  assert not exists (select 1 from public.bucket_items where title = 'Write my book'), 'buddies item hidden from a one-way follow';
+  assert not exists (select 1 from public.goal_details((select slug from public.goals g
+     join public.goal_translations t on t.goal_id = g.id where t.title = 'eat pizza in rome'))), 'others'' pending goal page hidden';
+  assert (select count(*) from public.explore_goals('en', null, null, null, 'near')) = 0, 'near me is empty without a location';
+
+  -- Bob can't follow on Alice's behalf, but following back makes them buddies.
+  begin
+    insert into public.follows (follower_id, followee_id)
+    values ('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000c');
+    raise exception 'follow as someone else allowed';
+  exception when insufficient_privilege or foreign_key_violation then null;
+  end;
+  insert into public.follows (follower_id, followee_id)
+  values ('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000a');
+  assert (select count(*) from public.bucket_items where title in ('Write my book', 'climb mount fuji')) = 2, 'buddies see buddies-only items';
+  assert not exists (select 1 from public.bucket_items where title = 'Secret dream of mine' and owner_id = '00000000-0000-0000-0000-00000000000a'), 'private stays private for buddies';
+  assert (select count(*) from public.follows) = 2, 'both sides see their follows';
+
   assert not exists (select 1 from public.bucket_items where title = 'Secret dream of mine'), 'private item hidden';
   assert not exists (select 1 from public.goals where status = 'pending'), 'others'' pending goals hidden';
   assert (select count(*) from public.goal_aliases) = 0, 'aliases are not readable by clients';
@@ -171,7 +227,11 @@ set local role anon;
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
 
 do $$ begin
-  assert (select count(*) from public.bucket_items) = 3, 'anon sees public items only';
+  assert (select count(*) from public.bucket_items) = 5, 'anon sees public items only';
+  assert not exists (select 1 from public.bucket_items where visibility = 'buddies'), 'anon never sees buddies items';
+  assert (select count(*) from public.follows) = 0, 'anon sees no follows';
+  assert (select my_item_id is null from public.goal_details('learn-to-play-the-piano')), 'anon has no item';
+  assert (select count(*) from public.explore_goals()) = 24, 'anon can explore';
   assert (select count(*) from public.goals where status = 'pending') = 0, 'anon sees no pending goals';
   begin
     perform 1 from public.profile_locations;

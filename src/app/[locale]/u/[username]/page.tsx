@@ -52,9 +52,10 @@ async function PublicProfile({ params }: { params: PageProps<"/[locale]/u/[usern
     supabase.rpc("profile_stats", { p_profile_id: profile.id }),
     supabase
       .from("bucket_items")
-      .select("id, title, status")
+      // RLS decides what the viewer may see (public, or buddies-only for buddies).
+      .select("id, title, status, goal:goals(slug)")
       .eq("owner_id", profile.id)
-      .eq("visibility", "public")
+      .neq("visibility", "private")
       .neq("status", "done")
       .order("created_at", { ascending: false })
       .limit(50),
@@ -161,7 +162,13 @@ async function PublicProfile({ params }: { params: PageProps<"/[locale]/u/[usern
           <ul className="flex flex-col gap-2">
             {items.data.map((item) => (
               <li key={item.id} className="bg-card flex items-center justify-between gap-3 rounded-xl border px-4 py-3">
-                <span className="font-medium">{item.title}</span>
+                {item.goal ? (
+                  <Link href={`/${locale}/goals/${item.goal.slug}`} className="font-medium underline-offset-4 hover:underline">
+                    {item.title}
+                  </Link>
+                ) : (
+                  <span className="font-medium">{item.title}</span>
+                )}
                 <span
                   className={cn(
                     "shrink-0 rounded-full px-2 py-0.5 text-xs",

@@ -197,8 +197,8 @@ export async function addFirstItem(title: string, goalId: string | null, locale:
     p_visibility: "public",
     p_locale: safeLocale(locale),
   });
-  if (error) return { ok: false, error: error.code === UNIQUE_VIOLATION ? "alreadyOnList" : "generic" };
-  return { ok: true, itemId: data };
+  if (error || !data[0]) return { ok: false, error: error?.code === UNIQUE_VIOLATION ? "alreadyOnList" : "generic" };
+  return { ok: true, itemId: data[0].item_id };
 }
 
 /**

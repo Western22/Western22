@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { BUCKET_VISIBILITIES } from "@/lib/supabase/database.types";
+import {
+  BUCKET_BUDGETS,
+  BUCKET_FLEXIBILITIES,
+  BUCKET_STATUSES,
+  BUCKET_TIMEFRAMES,
+  BUCKET_VISIBILITIES,
+  type GoalMatch,
+} from "@/lib/supabase/database.types";
 import { INTERESTS, LANGUAGE_CODES, MAX_LANGUAGES, TRAVEL_STYLES } from "@/lib/onboarding";
 import type { ErrorKey } from "@/i18n/messages/en";
 
@@ -52,10 +59,27 @@ export const locationSchema = z.object({
   lng: z.number().min(-180).max(180),
 });
 
-export const bucketItemSchema = z.object({
+/** Item details the owner can change at any time. Empty budget = not set. */
+export const itemDetailsSchema = z.object({
+  timeframe: z.enum(BUCKET_TIMEFRAMES).default("someday"),
+  flexibility: z.enum(BUCKET_FLEXIBILITIES).default("flexible"),
+  budget: z
+    .enum(BUCKET_BUDGETS)
+    .or(z.literal(""))
+    .transform((v) => (v === "" ? null : v))
+    .nullable()
+    .default(null),
+  visibility: z.enum(BUCKET_VISIBILITIES).default("public"),
+});
+
+export const bucketItemSchema = itemDetailsSchema.extend({
   title: z.string().trim().min(3).max(140),
   goalId: z.uuid().nullable().optional(),
-  visibility: z.enum(BUCKET_VISIBILITIES as [string, ...string[]]).default("public"),
+});
+
+export const itemUpdateSchema = itemDetailsSchema.extend({
+  itemId: z.uuid(),
+  status: z.enum(BUCKET_STATUSES),
 });
 
 /** Form state returned by every Server Action used with useActionState. */
@@ -71,6 +95,8 @@ export type FormState = {
    * input. Never include passwords.
    */
   values?: Record<string, string>;
+  /** After adding an item: how it was linked to a goal, for the confirmation message. */
+  added?: { match: GoalMatch; goalTitle: string; goalSlug: string };
 };
 
 /** Collect the named text fields from a submission for FormState.values. */

@@ -1,49 +1,100 @@
-import { Check, Lock, MapPin, Trash2, Undo2 } from "lucide-react";
+"use client";
+
+import { useActionState } from "react";
+import Link from "next/link";
+import { ChevronDown, Lock, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { deleteItem, setItemStatus } from "@/lib/actions/items";
-import type { BucketItem } from "@/lib/supabase/database.types";
+import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
+import { FormError } from "@/components/form-message";
+import { deleteItem, updateItem } from "@/lib/actions/items";
+import { BUCKET_STATUSES, type BucketItem, type GoalStatus } from "@/lib/supabase/database.types";
+import type { FormState } from "@/lib/validation";
 import type { Messages } from "@/i18n/messages/en";
 import { cn } from "@/lib/utils";
+import { ItemFields } from "./item-fields";
 
-type Props = {
-  item: Pick<BucketItem, "id" | "title" | "description" | "category" | "visibility" | "status" | "place_name">;
-  t: Messages["items"];
+export type ItemRowData = Pick<BucketItem, "id" | "title" | "status" | "visibility" | "timeframe" | "flexibility" | "budget"> & {
+  goal: { slug: string; status: GoalStatus } | null;
 };
 
-/** One of the owner's items, with done/undo and delete actions. */
-export function ItemRow({ item, t }: Props) {
+const STATUS_STYLE: Record<BucketItem["status"], string> = {
+  dreaming: "bg-muted text-muted-foreground",
+  planning: "bg-primary/10 text-primary",
+  done: "bg-emerald-100 text-emerald-800",
+};
+
+/** One of the owner's items: summary chips, an editable details panel, and delete. */
+export function ItemRow({ item, locale, t }: { item: ItemRowData; locale: string; t: Pick<Messages, "items" | "errors"> }) {
+  const [state, action, pending] = useActionState<FormState, FormData>(updateItem, {});
   const done = item.status === "done";
+  const it = t.items;
 
   return (
-    <li className="flex items-start gap-3 rounded-lg border p-4">
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <p className={cn("font-medium break-words", done && "text-muted-foreground line-through")}>{item.title}</p>
-        {item.description && <p className="text-muted-foreground text-sm break-words">{item.description}</p>}
-        <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-          <span>{t.category[item.category]}</span>
-          <span>{t.status[item.status]}</span>
-          {item.place_name && (
-            <span className="flex items-center gap-1">
-              <MapPin className="size-3" aria-hidden /> {item.place_name}
-            </span>
+    <li className="rounded-xl border p-4">
+      <div className="flex items-start gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          {item.goal ? (
+            <Link
+              href={`/${locale}/goals/${item.goal.slug}`}
+              className={cn("font-medium break-words underline-offset-4 hover:underline", done && "text-muted-foreground line-through")}
+            >
+              {item.title}
+            </Link>
+          ) : (
+            <p className="font-medium break-words">{item.title}</p>
           )}
-          {item.visibility === "private" && (
-            <span className="flex items-center gap-1">
-              <Lock className="size-3" aria-hidden /> {t.visibility.private}
-            </span>
-          )}
+          <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            <span className={cn("rounded-full px-2 py-0.5 font-medium", STATUS_STYLE[item.status])}>{it.status[item.status]}</span>
+            <span>{it.timeframe[item.timeframe]}</span>
+            {item.budget && <span>{it.budget[item.budget]}</span>}
+            {item.visibility !== "public" && (
+              <span className="flex items-center gap-1">
+                {item.visibility === "private" ? <Lock className="size-3" aria-hidden /> : <Users className="size-3" aria-hidden />}
+                {it.visibility[item.visibility]}
+              </span>
+            )}
+            {item.goal?.status === "pending" && <span className="italic">{it.pendingReview}</span>}
+          </div>
         </div>
+        <form action={deleteItem.bind(null, item.id)}>
+          <Button type="submit" variant="ghost" size="icon" aria-label={`${it.delete}: ${item.title}`} title={it.delete}>
+            <Trash2 />
+          </Button>
+        </form>
       </div>
-      <form action={setItemStatus.bind(null, item.id, done ? "dreaming" : "done")}>
-        <Button type="submit" variant="ghost" size="icon" aria-label={done ? t.markDreaming : t.markDone} title={done ? t.markDreaming : t.markDone}>
-          {done ? <Undo2 /> : <Check />}
-        </Button>
-      </form>
-      <form action={deleteItem.bind(null, item.id)}>
-        <Button type="submit" variant="ghost" size="icon" aria-label={t.delete} title={t.delete}>
-          <Trash2 />
-        </Button>
-      </form>
+
+      <details className="group mt-2">
+        <summary className="text-muted-foreground flex cursor-pointer list-none items-center gap-1 text-sm font-medium">
+          <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
+          {it.details}
+        </summary>
+        <form action={action} className="flex flex-col gap-3 pt-3">
+          <input type="hidden" name="itemId" value={item.id} />
+          <FormError errorKey={state.error} errors={t.errors} />
+          <div className="flex flex-col gap-1.5 sm:max-w-[calc(50%-0.375rem)]">
+            <Label htmlFor={`${item.id}-status`}>{it.fieldStatus}</Label>
+            <NativeSelect id={`${item.id}-status`} name="status" defaultValue={item.status}>
+              {BUCKET_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {it.status[s]}
+                </option>
+              ))}
+            </NativeSelect>
+          </div>
+          <ItemFields idPrefix={item.id} t={it} defaults={item} />
+          <div className="flex items-center gap-3">
+            <Button type="submit" size="sm" disabled={pending}>
+              {it.save}
+            </Button>
+            {state.ok && (
+              <p role="status" className="text-muted-foreground text-sm">
+                {it.saved}
+              </p>
+            )}
+          </div>
+        </form>
+      </details>
     </li>
   );
 }

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ChipPicker } from "@/components/chip-picker";
 import { GoalSearch } from "@/components/goal-search";
+import { CATEGORY_EMOJI } from "@/components/goal-art";
 import { createClient } from "@/lib/supabase/client";
 import {
   addFirstItem,
@@ -75,10 +76,6 @@ const INTEREST_EMOJI: Record<Interest, string> = {
   camping: "🏕️", nightlife: "🌃", dance: "💃", space: "🔭",
 };
 const STYLE_EMOJI: Record<TravelStyle, string> = { solo: "🎒", budget: "🪙", luxury: "🥂", adventure: "🌋" };
-const CATEGORY_EMOJI: Record<string, string> = {
-  adventure: "🪂", travel: "✈️", learning: "📚", creative: "🎨", sport: "🏅",
-  food: "🍜", nature: "🌿", culture: "🏛️", social: "🎉", other: "✨",
-};
 
 const AVATAR_SIZE = 512;
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
@@ -523,7 +520,7 @@ export function OnboardingFlow({ locale, profile, featured, initialItems, t }: P
                       )}
                     >
                       <span aria-hidden className="text-2xl">
-                        {CATEGORY_EMOJI[goal.category_slug] ?? "✨"}
+                        {CATEGORY_EMOJI[goal.category_slug]}
                       </span>
                       <span className="text-sm leading-snug font-medium">{goal.title}</span>
                       {goal.wanted_count > 0 && (

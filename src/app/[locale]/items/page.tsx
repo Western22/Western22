@@ -7,7 +7,7 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { getMessages } from "@/i18n/get-messages";
 import type { Messages } from "@/i18n/messages/en";
 import { NewItemForm } from "./new-item-form";
-import { ItemRow } from "./item-row";
+import { ItemRow, type ItemRowData } from "./item-row";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/items">): Promise<Metadata> {
   const { locale } = await params;
@@ -36,7 +36,7 @@ async function MyItems({ locale, t }: { locale: Locale; t: Messages }) {
   const supabase = await createClient();
   const { data: items, error } = await supabase
     .from("bucket_items")
-    .select("id, title, description, category, visibility, status, place_name")
+    .select("id, title, status, visibility, timeframe, flexibility, budget, goal:goals(slug, status)")
     .eq("owner_id", user.id)
     .order("created_at", { ascending: false });
   if (error) throw new Error("Could not load items");
@@ -45,8 +45,8 @@ async function MyItems({ locale, t }: { locale: Locale; t: Messages }) {
 
   return (
     <ul className="flex flex-col gap-3">
-      {items.map((item) => (
-        <ItemRow key={item.id} item={item} t={t.items} />
+      {items.map((item: ItemRowData) => (
+        <ItemRow key={item.id} item={item} locale={locale} t={{ items: t.items, errors: t.errors }} />
       ))}
     </ul>
   );
