@@ -48,7 +48,7 @@ async function ProfileContent({ locale, t }: { locale: Locale; t: Messages }) {
       <ProfileForm
         locale={locale}
         profile={profile}
-        t={{ profile: t.profile, errors: t.errors, interests: t.interests, travelStyles: t.travelStyles }}
+        t={{ profile: t.profile, errors: t.errors, interests: t.interests, travelStyles: t.travelStyles, common: t.common }}
       />
       <LocationCard hasLocation={!!hasLocation} t={{ profile: t.profile, errors: t.errors }} />
     </>

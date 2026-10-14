@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getSupabaseEnv } from "@/lib/env";
+import { geocodeCity } from "@/lib/geocode";
 import type { GoalSuggestion } from "@/lib/supabase/database.types";
 import { defaultLocale, isLocale, type Locale } from "@/i18n/config";
 import {
@@ -115,8 +116,16 @@ const homeSchema = z.object({
   languages: languagesSchema,
 });
 
-/** Step "home": city label, country and languages (the location point is saved separately). */
-export async function saveHome(input: { homeCity: string; homeCountry: string; languages: string[] }): Promise<FormState> {
+/**
+ * Step "home": city label, country and languages. If the person didn't share
+ * their browser location, the typed city is geocoded into an approximate point.
+ */
+export async function saveHome(input: {
+  homeCity: string;
+  homeCountry: string;
+  languages: string[];
+  locale: string;
+}): Promise<FormState> {
   const user = await getCurrentUser();
   if (!user) return { error: "notSignedIn" };
   const parsed = homeSchema.safeParse(input);
@@ -131,7 +140,17 @@ export async function saveHome(input: { homeCity: string; homeCountry: string; l
       languages: parsed.data.languages,
     })
     .eq("id", user.id);
-  return error ? { error: "generic" } : { ok: true };
+  if (error) return { error: "generic" };
+
+  if (parsed.data.homeCity) {
+    const { data: hasLocation } = await supabase.rpc("has_my_location");
+    if (!hasLocation) {
+      const point = await geocodeCity(parsed.data.homeCity, parsed.data.homeCountry, safeLocale(input.locale));
+      // set_my_location snaps to the ~5 km grid. A failed lookup just leaves no point.
+      if (point) await supabase.rpc("set_my_location", point);
+    }
+  }
+  return { ok: true };
 }
 
 const tastesSchema = z.object({ interests: interestsSchema, travelStyles: travelStylesSchema });

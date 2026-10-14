@@ -20,7 +20,7 @@ type Props = {
     Profile,
     "username" | "display_name" | "bio" | "home_city" | "home_country" | "languages" | "interests" | "travel_styles"
   >;
-  t: Pick<Messages, "profile" | "errors" | "interests" | "travelStyles">;
+  t: Pick<Messages, "profile" | "errors" | "interests" | "travelStyles" | "common">;
 };
 
 type LanguageCode = (typeof LANGUAGE_CODES)[number];
@@ -39,6 +39,7 @@ export function ProfileForm({ locale, profile, t }: Props) {
     <Card>
       <CardContent>
         <form action={action} className="flex flex-col gap-4">
+          <input type="hidden" name="locale" value={locale} />
           <FormError errorKey={state.error} errors={t.errors} />
           <div className="flex flex-col gap-2">
             <Label htmlFor="username">{t.profile.username}</Label>
@@ -89,6 +90,11 @@ export function ProfileForm({ locale, profile, t }: Props) {
                 title={t.profile.homeCountryHint}
               />
             </div>
+            <p className="text-muted-foreground -mt-2 text-xs sm:col-span-2">
+              <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">
+                {t.common.osmCredit}
+              </a>
+            </p>
           </div>
           <div className="flex flex-col gap-2">
             <p aria-hidden className="text-sm font-medium">{t.profile.languages}</p>

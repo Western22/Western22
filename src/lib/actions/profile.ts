@@ -3,6 +3,8 @@
 import { refresh } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
+import { geocodeCity } from "@/lib/geocode";
+import { defaultLocale, isLocale } from "@/i18n/config";
 import { echoValues, locationSchema, profileSchema, toFieldErrors, type FormState } from "@/lib/validation";
 
 /** Postgres unique_violation, raised when a username is already taken. */
@@ -27,6 +29,13 @@ export async function updateProfile(_prev: FormState, formData: FormData): Promi
   if (!parsed.success) return { error: "invalidInput", fieldErrors: toFieldErrors(parsed.error), values };
 
   const supabase = await createClient();
+  const { data: before, error: readError } = await supabase
+    .from("profiles")
+    .select("home_city, home_country")
+    .eq("id", user.id)
+    .single();
+  if (readError) return { error: "generic", values };
+
   const { error } = await supabase
     .from("profiles")
     .update({
@@ -45,6 +54,16 @@ export async function updateProfile(_prev: FormState, formData: FormData): Promi
     if (error.code === UNIQUE_VIOLATION) return { fieldErrors: { username: "usernameTaken" }, values };
     return { error: "generic", values };
   }
+
+  // A new home city moves the approximate point there (snapped to ~5 km by the RPC).
+  const newCity = parsed.data.homeCity ?? null;
+  const cityChanged = newCity !== before.home_city || parsed.data.homeCountry !== before.home_country;
+  if (newCity && cityChanged) {
+    const locale = String(formData.get("locale") ?? "");
+    const point = await geocodeCity(newCity, parsed.data.homeCountry, isLocale(locale) ? locale : defaultLocale);
+    if (point) await supabase.rpc("set_my_location", point);
+  }
+
   refresh();
   return { ok: true };
 }

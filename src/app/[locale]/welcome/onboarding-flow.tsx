@@ -395,6 +395,11 @@ export function OnboardingFlow({ locale, profile, featured, initialItems, t }: P
               </Button>
               {location === "denied" && <p className="text-muted-foreground text-sm">{o.home.locationDenied}</p>}
             </div>
+            <p className="text-muted-foreground -mt-3 text-xs">
+              <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">
+                {t.common.osmCredit}
+              </a>
+            </p>
             <div className="flex flex-col gap-2">
               <p className="text-sm font-medium">{o.home.languages}</p>
               <p className="text-muted-foreground text-xs">{format(o.home.languagesHint, { max: MAX_LANGUAGES })}</p>
@@ -592,7 +597,7 @@ export function OnboardingFlow({ locale, profile, featured, initialItems, t }: P
                   if (!displayName.trim()) return goNext();
                   saveThenNext(() => saveBasics({ displayName, avatarUrl }));
                 } else if (step === "home") {
-                  saveThenNext(() => saveHome({ homeCity, homeCountry, languages }));
+                  saveThenNext(() => saveHome({ homeCity, homeCountry, languages, locale }));
                 } else if (step === "tastes") {
                   saveThenNext(() => saveTastes({ interests, travelStyles }));
                 } else {

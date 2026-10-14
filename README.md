@@ -89,6 +89,8 @@ supabase/
 ## Privacy rules (enforced in the database)
 
 - `profiles` is public and contains no email, phone or coordinates.
+- The home point comes from the browser's location or, failing that, the typed
+  home city geocoded on the server (`src/lib/geocode.ts`); coordinates never reach the browser.
 - `profile_locations` holds the home point, already snapped to a ~5 km grid by
   `set_my_location()`; only its owner can read or write it. The UI only ever
   asks `has_my_location()`, which returns a boolean.
@@ -109,8 +111,8 @@ typed as `Messages`, and register it in `src/i18n/get-messages.ts`.
 ## Known TODOs
 
 - `TODO(brand)`: the app name is a placeholder (`src/i18n/messages/en.ts`).
-- `TODO(geocoding)`: turning a typed home city into a point needs a geocoding
-  service; for now the point only comes from the browser's location, snapped.
+- `TODO(geocoding)`: typed home cities are geocoded with the free public
+  Nominatim server (1 request/second policy). At scale, self-host it and set `NOMINATIM_URL`.
 - `TODO(age-gate)`: delete accounts that never confirm 18+ (needs a service-role job).
 - `TODO(badges)`: persist awarded badges once notifications need them.
 - `TODO(goals)`: drop the deprecated `bucket_items.category` column.

@@ -77,7 +77,7 @@ const en = {
     home: {
       eyebrow: "Every journey starts somewhere",
       title: "Where's home, and what do you speak?",
-      body: "We use this to find people near you. We store only an approximate area, about 5 km wide, and never show it to anyone.",
+      body: "We use your city, or your device's location if you share it, to find people near you. We store only an approximate area, about 5 km wide, and never show it to anyone.",
       city: "Home city",
       cityPlaceholder: "Accra",
       country: "Country code",
@@ -169,7 +169,7 @@ const en = {
     viewPublic: "View my public profile",
     locationTitle: "Your approximate location",
     locationBody:
-      "Used to find people near you. We store only an area about 5 km wide, and nobody else can ever see it.",
+      "Used to find people near you. It comes from your home city, or your device if you share it. We store only an area about 5 km wide, and nobody else can ever see it.",
     locationShare: "Use my approximate location",
     locationUpdate: "Update my location",
     locationSaved: "Approximate area saved privately.",
@@ -231,6 +231,7 @@ const en = {
   },
   common: {
     loading: "Loading…",
+    osmCredit: "City lookup © OpenStreetMap contributors",
   },
   errors: {
     generic: "Something went wrong. Please try again.",
