@@ -23,6 +23,13 @@ recent activity, with reason chips. "Let's do this together" requests with a
 short note, a requests inbox (accepting makes you buddies), and blocking.
 Weights live in `src/lib/matching/config.ts`.
 
+**Increment 5 (groups):** small groups around one goal (owner sets the size,
+default 6; open or ask-to-join). Each group has Chat (Supabase Realtime, photos,
+read receipts, reporting), Plan (date options with votes, location, budget,
+shared checklist, status forming → planning → confirmed → completed), Members
+and Memories (stories and chat photos). Completing a group marks every member's
+item done and prompts each member to post a story; stories also show on goal pages.
+
 Every table has Row Level Security.
 
 ## Stack
@@ -63,10 +70,12 @@ recorded on the profile when the OAuth callback lands in `/auth/confirm`.
 npx tsc --noEmit && npm run lint && npm run build
 psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/tests/rls_test.sql
 psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/tests/matching_test.sql
+psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/tests/groups_test.sql
 ```
 
-Each test runs in a transaction, rolls back, and prints `ALL RLS CHECKS PASSED` or
-`ALL MATCHING CHECKS PASSED`.
+Each test runs in a transaction, rolls back, and prints `ALL ... CHECKS PASSED`.
+Group chat needs the Realtime service: don't exclude `realtime` when running
+`npx supabase start -x ...` (hosted projects have it on).
 
 ## Deploying to a hosted Supabase project
 
@@ -91,6 +100,8 @@ src/
     items/                 my bucket list (add from free text, edit details, delete)
     items/[itemId]/matches ranked buddies for one item, with "Let's do this together"
     requests/              requests inbox: waiting for you, doing it together, sent
+    groups/                my groups (unread, story prompts, join requests)
+    groups/[groupId]       group space: ?tab=chat|plan|members|memories
     goals/[slug]/          goal page: description, counts, best time, add button
     explore/               browse goals: category, region, season, trending, near me
   app/auth/confirm/        handles links from Supabase auth emails
@@ -99,6 +110,8 @@ src/
   lib/badges.ts            badge rules, computed from profile stats
   lib/matching/config.ts   matching weights and tuning values (the one place to tune)
   lib/matching/reasons.ts  reason chips ("Both aiming for 2027", "Speaks Spanish")
+  lib/images.ts            browser photo resize (strips EXIF/GPS) for chat and stories
+  components/groups/       join button, create-group form, story list
   components/              goal-search (typeahead over canonical goals), chip-picker
   lib/supabase/            server, browser and proxy clients + database types
 supabase/
@@ -106,9 +119,11 @@ supabase/
                            0003 onboarding fields, goals, avatars bucket, moderators,
                            0004 item details, fuzzy matching, follows, explore/goal RPCs,
                            0005 seed of 212 goals,
-                           0006 matching: find_matches, match requests, blocks
+                           0006 matching: find_matches, match requests, blocks,
+                           0007 groups, plan, chat, reports, stories, storage buckets
   tests/rls_test.sql       RLS checks (two users + anonymous)
   tests/matching_test.sql  matching, requests and blocking checks
+  tests/groups_test.sql    groups, plan, chat, reports, completion checks
 ```
 
 ## Privacy rules (enforced in the database)
@@ -132,6 +147,11 @@ supabase/
   (under 25 km, then to 10, 50 or 100 km). Coordinates never leave the database.
 - Match requests and blocks are written only through RPCs. Each side of a request
   can read it; only the blocker can see a block.
+- Group chat, plan and member lists are readable only by members (RLS, also
+  applied to Realtime events). Chat photos are in the private `group-media`
+  bucket under the group's folder and are shown through short-lived signed URLs.
+- A chat message reported by 3 members is hidden from everyone but its sender
+  and moderators. Who ticked a checklist item is recorded by the database.
 - All timestamps are `timestamptz` (UTC). `target_date` is a calendar date with no time.
 
 ## Adding a language
@@ -147,9 +167,10 @@ typed as `Messages`, and register it in `src/i18n/get-messages.ts`.
 - `TODO(age-gate)`: delete accounts that never confirm 18+ (needs a service-role job).
 - `TODO(badges)`: persist awarded badges once notifications need them.
 - `TODO(follows)`: follow/unfollow UI (until then, buddies-only items are visible only to you).
-- `TODO(groups)`: accepting a match request makes you buddies; it should also start a group once groups exist.
+- `TODO(moderation)`: a review screen for reported messages and pending goals.
+- `TODO(chat)`: load older messages (the chat shows the latest 100).
 - `TODO(notifications)`: new requests show as a badge on the header inbox; no email or push yet.
-- `TODO(stories)`, `TODO(groups)`: goal pages show empty states until posts and groups exist.
+- `TODO(stories)`: rank stories by reactions once reactions exist (newest first for now).
 - `TODO(goal-photos)`: seeded goals use category artwork; add licensed photos with credits.
 - `TODO(feed)`: paginate Explore.
 - `TODO(i18n)`: `not-found` and `error` pages are English-only for now.

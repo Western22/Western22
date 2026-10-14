@@ -118,6 +118,10 @@ function RequestCard({ q, locale, t }: { q: MatchRequest; locale: Locale; t: Mes
         <p className="text-muted-foreground text-sm">{r.pending}</p>
       ) : q.status === "declined" ? (
         <p className="text-muted-foreground text-sm">{r.declined}</p>
+      ) : q.status === "accepted" ? (
+        <Link href={`/${locale}/goals/${q.goal_slug}#groups`} className="text-primary self-start text-sm font-medium hover:underline">
+          {t.matches.startGroup}
+        </Link>
       ) : null}
     </li>
   );

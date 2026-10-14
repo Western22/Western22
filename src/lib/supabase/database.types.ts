@@ -48,6 +48,14 @@ export type GoalStatus = "pending" | "active" | "merged" | "rejected";
 /** How add_bucket_item() linked the item to a goal. */
 export type GoalMatch = "chosen" | "exact" | "fuzzy" | "new";
 export type MatchRequestStatus = "pending" | "accepted" | "declined" | "cancelled";
+export type GroupStatus = "forming" | "planning" | "confirmed" | "completed";
+export type GroupJoinPolicy = "open" | "request";
+export type ChecklistCategory = "visa" | "gear" | "booking" | "other";
+export type ReportReason = "spam" | "harassment" | "inappropriate" | "other";
+
+export const GROUP_STATUSES: readonly GroupStatus[] = ["forming", "planning", "confirmed", "completed"];
+export const CHECKLIST_CATEGORIES: readonly ChecklistCategory[] = ["visa", "gear", "booking", "other"];
+export const REPORT_REASONS: readonly ReportReason[] = ["spam", "harassment", "inappropriate", "other"];
 
 /** Browsable categories, in display order ("other" holds unreviewed goals). */
 export const GOAL_CATEGORIES: readonly GoalCategory[] = [
@@ -227,6 +235,128 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      // Writes go through create_group / update_group / set_group_status.
+      groups: {
+        Row: {
+          id: string;
+          goal_id: string;
+          owner_id: string;
+          name: string;
+          description: string | null;
+          max_size: number;
+          join_policy: GroupJoinPolicy;
+          status: GroupStatus;
+          member_count: number;
+          created_at: string;
+          updated_at: string;
+          completed_at: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          { foreignKeyName: "groups_goal_id_fkey"; columns: ["goal_id"]; isOneToOne: false; referencedRelation: "goals"; referencedColumns: ["id"] },
+          { foreignKeyName: "groups_owner_id_fkey"; columns: ["owner_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ];
+      };
+      // Writes go through join_group / leave_group / mark_group_read and friends.
+      group_members: {
+        Row: {
+          group_id: string;
+          user_id: string;
+          role: "owner" | "member";
+          joined_at: string;
+          last_read_at: string;
+          story_prompt: boolean;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [{ foreignKeyName: "group_members_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }];
+      };
+      group_join_requests: {
+        Row: {
+          id: string;
+          group_id: string;
+          user_id: string;
+          note: string | null;
+          status: MatchRequestStatus;
+          created_at: string;
+          responded_at: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [{ foreignKeyName: "group_join_requests_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }];
+      };
+      group_plans: {
+        Row: {
+          group_id: string;
+          location_text: string | null;
+          budget_amount: number | null;
+          budget_currency: string;
+          notes: string | null;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      group_date_options: {
+        Row: { id: string; group_id: string; proposed_by: string; starts_on: string; ends_on: string; created_at: string };
+        Insert: { group_id: string; starts_on: string; ends_on: string };
+        Update: never;
+        Relationships: [{ foreignKeyName: "group_date_options_proposed_by_fkey"; columns: ["proposed_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }];
+      };
+      group_date_votes: {
+        Row: { option_id: string; user_id: string; created_at: string };
+        Insert: { option_id: string };
+        Update: never;
+        Relationships: [{ foreignKeyName: "group_date_votes_option_id_fkey"; columns: ["option_id"]; isOneToOne: false; referencedRelation: "group_date_options"; referencedColumns: ["id"] }, { foreignKeyName: "group_date_votes_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }];
+      };
+      group_checklist_items: {
+        Row: {
+          id: string;
+          group_id: string;
+          title: string;
+          category: ChecklistCategory;
+          done: boolean;
+          done_by: string | null;
+          done_at: string | null;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: { group_id: string; title: string; category?: ChecklistCategory };
+        // done_by / done_at are stamped by a trigger.
+        Update: { title?: string; category?: ChecklistCategory; done?: boolean };
+        Relationships: [];
+      };
+      group_messages: {
+        Row: {
+          id: string;
+          group_id: string;
+          sender_id: string;
+          body: string | null;
+          image_path: string | null;
+          created_at: string;
+          hidden_at: string | null;
+        };
+        Insert: { group_id: string; body?: string | null; image_path?: string | null };
+        Update: never;
+        Relationships: [{ foreignKeyName: "group_messages_sender_id_fkey"; columns: ["sender_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }];
+      };
+      stories: {
+        Row: {
+          id: string;
+          author_id: string;
+          goal_id: string;
+          group_id: string | null;
+          body: string;
+          photo_url: string | null;
+          created_at: string;
+        };
+        Insert: { goal_id: string; group_id?: string | null; body: string; photo_url?: string | null };
+        Update: never;
+        Relationships: [{ foreignKeyName: "stories_author_id_fkey"; columns: ["author_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }];
+      };
       // Writes go through send_match_request / respond_match_request.
       match_requests: {
         Row: {
@@ -372,6 +502,59 @@ export type Database = {
       };
       block_user: { Args: { p_user_id: string }; Returns: undefined };
       unblock_user: { Args: { p_user_id: string }; Returns: undefined };
+      create_group: {
+        Args: { p_goal_id: string; p_name: string; p_description?: string | null; p_max_size?: number; p_join_policy?: GroupJoinPolicy };
+        Returns: string;
+      };
+      join_group: { Args: { p_group_id: string; p_note?: string | null }; Returns: "joined" | "requested" };
+      cancel_join_request: { Args: { p_group_id: string }; Returns: undefined };
+      respond_join_request: { Args: { p_request_id: string; p_accept: boolean }; Returns: undefined };
+      leave_group: { Args: { p_group_id: string }; Returns: undefined };
+      remove_group_member: { Args: { p_group_id: string; p_user_id: string }; Returns: undefined };
+      update_group: {
+        Args: { p_group_id: string; p_name: string; p_description: string | null; p_max_size: number; p_join_policy: GroupJoinPolicy };
+        Returns: undefined;
+      };
+      update_group_plan: {
+        Args: { p_group_id: string; p_location: string | null; p_budget_amount: number | null; p_budget_currency: string; p_notes?: string | null };
+        Returns: undefined;
+      };
+      set_group_status: { Args: { p_group_id: string; p_status: GroupStatus }; Returns: undefined };
+      dismiss_story_prompt: { Args: { p_group_id: string }; Returns: undefined };
+      mark_group_read: { Args: { p_group_id: string }; Returns: undefined };
+      report_message: { Args: { p_message_id: string; p_reason: ReportReason; p_details?: string | null }; Returns: undefined };
+      is_group_member: { Args: { p_group_id: string }; Returns: boolean };
+      goal_groups: {
+        Args: { p_goal_id: string };
+        Returns: {
+          id: string;
+          name: string;
+          description: string | null;
+          status: GroupStatus;
+          join_policy: GroupJoinPolicy;
+          member_count: number;
+          max_size: number;
+          owner_display_name: string | null;
+          owner_username: string | null;
+          is_member: boolean;
+          request_pending: boolean;
+        }[];
+      };
+      my_groups: {
+        Args: { p_locale?: string };
+        Returns: {
+          id: string;
+          name: string;
+          status: GroupStatus;
+          member_count: number;
+          max_size: number;
+          goal_slug: string;
+          goal_title: string;
+          unread_count: number;
+          story_prompt: boolean;
+          pending_requests: number;
+        }[];
+      };
       are_buddies: { Args: { a: string; b: string }; Returns: boolean };
       goal_title: { Args: { p_goal_id: string; p_locale: string }; Returns: string };
       profile_stats: {
@@ -391,3 +574,6 @@ export type ExploreGoal = Database["public"]["Functions"]["explore_goals"]["Retu
 export type GoalDetails = Database["public"]["Functions"]["goal_details"]["Returns"][number];
 export type Match = Database["public"]["Functions"]["find_matches"]["Returns"][number];
 export type MatchRequest = Database["public"]["Functions"]["my_match_requests"]["Returns"][number];
+export type GoalGroup = Database["public"]["Functions"]["goal_groups"]["Returns"][number];
+export type MyGroup = Database["public"]["Functions"]["my_groups"]["Returns"][number];
+export type GroupMessage = Database["public"]["Tables"]["group_messages"]["Row"];

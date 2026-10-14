@@ -12,6 +12,9 @@ import { isLocale } from "@/i18n/config";
 import { getMessages } from "@/i18n/get-messages";
 import { format } from "@/i18n/format";
 import { AddGoalButton } from "./add-goal-button";
+import { JoinGroupButton } from "@/components/groups/join-group-button";
+import { CreateGroupForm } from "@/components/groups/create-group-form";
+import { StoryList, type StoryRow } from "@/components/groups/story-list";
 
 const SLUG_RE = /^[a-z0-9-]{3,90}$/;
 
@@ -54,6 +57,18 @@ async function Goal({ params }: { params: PageProps<"/[locale]/goals/[slug]">["p
   const goal = data[0];
   if (!goal) notFound();
   if (goal.status === "merged" && goal.merged_into_slug) redirect(`/${locale}/goals/${goal.merged_into_slug}`);
+
+  const [{ data: groupRows }, { data: storyRows }] = await Promise.all([
+    supabase.rpc("goal_groups", { p_goal_id: goal.goal_id }),
+    supabase
+      .from("stories")
+      .select("id, body, photo_url, created_at, author:profiles(username, display_name, avatar_url)")
+      .eq("goal_id", goal.goal_id)
+      .order("created_at", { ascending: false })
+      .limit(10),
+  ]);
+  const groups = groupRows ?? [];
+  const stories: StoryRow[] = storyRows ?? [];
 
   const g = t.goal;
   const place = [goal.place_name, goal.place_country ? countryName(goal.place_country, locale) : null]
@@ -136,22 +151,81 @@ async function Goal({ params }: { params: PageProps<"/[locale]/goals/[slug]">["p
         )}
       </div>
 
-      {/* TODO(stories): list top posts for this goal once posts exist (design doc: posts, reactions). */}
       <section className="flex flex-col gap-2">
         <h2 className="flex items-center gap-2 text-lg font-semibold">
           <MessageSquareText className="size-5" aria-hidden />
           {g.stories}
         </h2>
-        <p className="text-muted-foreground rounded-xl border border-dashed p-4 text-sm">{g.storiesEmpty}</p>
+        {/* TODO(stories): rank by reactions once they exist; for now, newest first. */}
+        <StoryList stories={stories} locale={locale} empty={g.storiesEmpty} />
       </section>
 
-      {/* TODO(groups): list open groups for this goal once groups exist (design doc: groups, group_members). */}
-      <section className="flex flex-col gap-2">
+      <section id="groups" className="flex scroll-mt-4 flex-col gap-3">
         <h2 className="flex items-center gap-2 text-lg font-semibold">
           <UsersRound className="size-5" aria-hidden />
           {g.groups}
         </h2>
-        <p className="text-muted-foreground rounded-xl border border-dashed p-4 text-sm">{g.groupsEmpty}</p>
+        {groups.length === 0 ? (
+          <p className="text-muted-foreground rounded-xl border border-dashed p-4 text-sm">{g.groupsEmpty}</p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {groups.map((group) => {
+              const full = group.member_count >= group.max_size;
+              return (
+                <li key={group.id} className="bg-card flex flex-col gap-2 rounded-2xl border p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold">
+                      {group.is_member ? (
+                        <Link href={`/${locale}/groups/${group.id}`} className="hover:underline">
+                          {group.name}
+                        </Link>
+                      ) : (
+                        group.name
+                      )}
+                    </h3>
+                    <span className="bg-muted shrink-0 rounded-full px-2 py-0.5 text-xs font-medium">{t.groups.status[group.status]}</span>
+                  </div>
+                  {group.description && <p className="text-sm text-pretty">{group.description}</p>}
+                  <p className="text-muted-foreground text-xs">
+                    {format(t.groups.members, { count: group.member_count, max: group.max_size })} ·{" "}
+                    {group.join_policy === "open" ? t.groups.policy.open : t.groups.policy.request}
+                    {group.owner_display_name && <> · {format(t.groups.by, { name: group.owner_display_name })}</>}
+                  </p>
+                  {group.is_member ? (
+                    <Button asChild size="sm" variant="outline" className="self-start">
+                      <Link href={`/${locale}/groups/${group.id}`}>{t.groups.openGroup}</Link>
+                    </Button>
+                  ) : group.status === "completed" ? null : !user ? (
+                    <Button asChild size="sm" variant="outline" className="self-start">
+                      <Link href={`/${locale}/login`}>{g.signInToAdd}</Link>
+                    </Button>
+                  ) : full && !group.request_pending ? (
+                    <span className="text-muted-foreground text-sm">{t.groups.full}</span>
+                  ) : (
+                    <JoinGroupButton
+                      groupId={group.id}
+                      policy={group.join_policy}
+                      requestPending={group.request_pending}
+                      locale={locale}
+                      t={{ groups: t.groups, errors: t.errors }}
+                    />
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {user && goal.status === "active" && (
+          <details className="group rounded-2xl border p-4">
+            <summary className="cursor-pointer list-none font-medium">
+              {t.groups.start}
+              <span className="text-muted-foreground block text-sm font-normal">{t.groups.startHint}</span>
+            </summary>
+            <div className="pt-3">
+              <CreateGroupForm goalId={goal.goal_id} locale={locale} t={{ groups: t.groups, errors: t.errors }} />
+            </div>
+          </details>
+        )}
       </section>
     </article>
   );

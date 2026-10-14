@@ -376,7 +376,7 @@ $$;
 -- ---------------------------------------------------------------------------
 -- respond_match_request: the recipient accepts or declines a pending request.
 -- Accepting makes the two people buddies (mutual follows).
--- TODO(groups): create a group for the goal on accept once groups exist.
+-- The requests page then offers to start a group for the goal (see 0007).
 -- ---------------------------------------------------------------------------
 create or replace function public.respond_match_request(p_request_id uuid, p_accept boolean)
 returns void

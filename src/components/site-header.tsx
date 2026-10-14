@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Inbox } from "lucide-react";
+import { Compass, Inbox, UserRound, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth";
 import { signOut } from "@/lib/actions/auth";
@@ -21,7 +21,11 @@ export function SiteHeader({ locale, t }: { locale: Locale; t: Messages }) {
           {t.app.name}
         </Link>
         <Button asChild variant="ghost" size="sm">
-          <Link href={`/${locale}/explore`}>{t.nav.explore}</Link>
+          <Link href={`/${locale}/explore`} title={t.nav.explore}>
+            {/* Icon-only on phones so the signed-in nav fits; the text stays for screen readers. */}
+            <Compass aria-hidden className="sm:hidden" />
+            <span className="max-sm:sr-only">{t.nav.explore}</span>
+          </Link>
         </Button>
         <Suspense fallback={<div className="h-8 w-24" aria-hidden />}>
           <UserNav locale={locale} t={t} />
@@ -56,6 +60,12 @@ async function UserNav({ locale, t }: { locale: Locale; t: Messages }) {
     .eq("recipient_id", user.id)
     .eq("status", "pending");
   const pending = count ?? 0;
+  // Group activity: unread messages, story prompts and join requests to review.
+  const { data: groups } = await supabase.rpc("my_groups", { p_locale: locale });
+  const groupActivity = (groups ?? []).reduce(
+    (n, g) => n + g.unread_count + g.pending_requests + (g.story_prompt ? 1 : 0),
+    0,
+  );
   const requestsLabel = pending > 0 ? `${t.nav.requests}, ${format(t.nav.requestsPending, { count: pending })}` : t.nav.requests;
 
   return (
@@ -64,20 +74,26 @@ async function UserNav({ locale, t }: { locale: Locale; t: Messages }) {
         <Link href={`/${locale}/items`}>{t.nav.myList}</Link>
       </Button>
       <Button asChild variant="ghost" size="sm" className="relative">
+        <Link
+          href={`/${locale}/groups`}
+          aria-label={groupActivity > 0 ? `${t.nav.groups}, ${format(t.nav.requestsPending, { count: groupActivity })}` : t.nav.groups}
+          title={t.nav.groups}
+        >
+          <UsersRound aria-hidden />
+          {groupActivity > 0 && <Badge count={groupActivity} />}
+        </Link>
+      </Button>
+      <Button asChild variant="ghost" size="sm" className="relative">
         <Link href={`/${locale}/requests`} aria-label={requestsLabel} title={t.nav.requests}>
           <Inbox aria-hidden />
-          {pending > 0 && (
-            <span
-              aria-hidden
-              className="bg-primary text-primary-foreground absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold"
-            >
-              {pending > 9 ? "9+" : pending}
-            </span>
-          )}
+          {pending > 0 && <Badge count={pending} />}
         </Link>
       </Button>
       <Button asChild variant="ghost" size="sm">
-        <Link href={`/${locale}/profile`}>{t.nav.profile}</Link>
+        <Link href={`/${locale}/profile`} title={t.nav.profile}>
+          <UserRound aria-hidden className="sm:hidden" />
+          <span className="max-sm:sr-only">{t.nav.profile}</span>
+        </Link>
       </Button>
       <form action={signOut}>
         <input type="hidden" name="locale" value={locale} />
@@ -86,5 +102,16 @@ async function UserNav({ locale, t }: { locale: Locale; t: Messages }) {
         </Button>
       </form>
     </>
+  );
+}
+
+function Badge({ count }: { count: number }) {
+  return (
+    <span
+      aria-hidden
+      className="bg-primary text-primary-foreground absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold"
+    >
+      {count > 9 ? "9+" : count}
+    </span>
   );
 }
