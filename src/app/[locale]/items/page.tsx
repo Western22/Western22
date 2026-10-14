@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { requireOnboardedProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getMessages } from "@/i18n/get-messages";
@@ -22,7 +22,7 @@ export default async function ItemsPage({ params }: PageProps<"/[locale]/items">
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-bold tracking-tight">{t.items.title}</h1>
-      <NewItemForm t={{ items: t.items, errors: t.errors }} />
+      <NewItemForm locale={locale} t={{ items: t.items, errors: t.errors, onboarding: t.onboarding }} />
       <Suspense fallback={<p className="text-muted-foreground">{t.common.loading}</p>}>
         <MyItems locale={locale} t={t} />
       </Suspense>
@@ -32,7 +32,7 @@ export default async function ItemsPage({ params }: PageProps<"/[locale]/items">
 
 /** The caller's own items, public and private. */
 async function MyItems({ locale, t }: { locale: Locale; t: Messages }) {
-  const user = await requireUser(locale);
+  const user = await requireOnboardedProfile(locale);
   const supabase = await createClient();
   const { data: items, error } = await supabase
     .from("bucket_items")

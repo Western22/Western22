@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { BUCKET_CATEGORIES, BUCKET_VISIBILITIES } from "@/lib/supabase/database.types";
+import { BUCKET_VISIBILITIES } from "@/lib/supabase/database.types";
+import { INTERESTS, LANGUAGE_CODES, MAX_LANGUAGES, TRAVEL_STYLES } from "@/lib/onboarding";
 import type { ErrorKey } from "@/i18n/messages/en";
 
 /**
@@ -18,32 +19,32 @@ const optionalText = (max: number) =>
     .nullable()
     .optional();
 
-export const signInSchema = z.object({
-  email: z.email(),
-  password: z.string().min(1),
-});
+export const usernameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9_]{3,30}$/);
 
-export const signUpSchema = z.object({
-  email: z.email(),
-  password: z.string().min(8, "weakPassword" satisfies ErrorKey),
-  displayName: optionalText(60),
-});
+export const countrySchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^([A-Z]{2})?$/)
+  .transform((v) => (v === "" ? null : v));
+
+export const languagesSchema = z.array(z.enum(LANGUAGE_CODES)).max(MAX_LANGUAGES);
+export const interestsSchema = z.array(z.enum(INTERESTS)).max(INTERESTS.length);
+export const travelStylesSchema = z.array(z.enum(TRAVEL_STYLES)).max(TRAVEL_STYLES.length);
 
 export const profileSchema = z.object({
-  username: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .regex(/^[a-z0-9_]{3,30}$/),
+  username: usernameSchema,
   displayName: optionalText(60),
   bio: optionalText(500),
   homeCity: optionalText(100),
-  homeCountry: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .regex(/^([A-Z]{2})?$/)
-    .transform((v) => (v === "" ? null : v)),
+  homeCountry: countrySchema,
+  languages: languagesSchema,
+  interests: interestsSchema,
+  travelStyles: travelStylesSchema,
 });
 
 export const locationSchema = z.object({
@@ -53,10 +54,8 @@ export const locationSchema = z.object({
 
 export const bucketItemSchema = z.object({
   title: z.string().trim().min(3).max(140),
-  description: optionalText(2000),
-  category: z.enum(BUCKET_CATEGORIES as [string, ...string[]]).default("other"),
+  goalId: z.uuid().nullable().optional(),
   visibility: z.enum(BUCKET_VISIBILITIES as [string, ...string[]]).default("public"),
-  placeName: optionalText(120),
 });
 
 /** Form state returned by every Server Action used with useActionState. */
@@ -84,14 +83,12 @@ export function echoValues(formData: FormData, names: readonly string[]): Record
   return out;
 }
 
-/** Turn a ZodError into per-field i18n keys (falls back to "invalidInput"). */
+/** Turn a ZodError into per-field i18n keys. */
 export function toFieldErrors(error: z.ZodError): FormState["fieldErrors"] {
   const out: Record<string, ErrorKey> = {};
   for (const issue of error.issues) {
     const field = String(issue.path[0] ?? "form");
-    if (out[field]) continue;
-    const msg = issue.message as ErrorKey;
-    out[field] = ["weakPassword"].includes(msg) ? msg : "invalidInput";
+    if (!out[field]) out[field] = "invalidInput";
   }
   return out;
 }

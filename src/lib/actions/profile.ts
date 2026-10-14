@@ -18,6 +18,10 @@ export async function updateProfile(_prev: FormState, formData: FormData): Promi
     bio: formData.get("bio"),
     homeCity: formData.get("homeCity"),
     homeCountry: formData.get("homeCountry") ?? "",
+    // Chip pickers submit one hidden input per selected value.
+    languages: formData.getAll("languages"),
+    interests: formData.getAll("interests"),
+    travelStyles: formData.getAll("travelStyles"),
   });
   const values = echoValues(formData, ["username", "displayName", "bio", "homeCity", "homeCountry"]);
   if (!parsed.success) return { error: "invalidInput", fieldErrors: toFieldErrors(parsed.error), values };
@@ -31,6 +35,9 @@ export async function updateProfile(_prev: FormState, formData: FormData): Promi
       bio: parsed.data.bio ?? null,
       home_city: parsed.data.homeCity ?? null,
       home_country: parsed.data.homeCountry,
+      languages: parsed.data.languages,
+      interests: parsed.data.interests,
+      travel_styles: parsed.data.travelStyles,
     })
     .eq("id", user.id);
 
@@ -43,8 +50,8 @@ export async function updateProfile(_prev: FormState, formData: FormData): Promi
 }
 
 /**
- * Save the caller's exact location. The coordinates go straight into the
- * owner-only profile_locations table and are never sent back to any client.
+ * Save the caller's location. The database snaps it to a ~5 km grid before
+ * storing (set_my_location), and it is never sent back to any client.
  */
 export async function saveMyLocation(lat: number, lng: number): Promise<FormState> {
   const user = await getCurrentUser();
@@ -56,6 +63,5 @@ export async function saveMyLocation(lat: number, lng: number): Promise<FormStat
   const supabase = await createClient();
   const { error } = await supabase.rpc("set_my_location", parsed.data);
   if (error) return { error: "generic" };
-  refresh();
   return { ok: true };
 }

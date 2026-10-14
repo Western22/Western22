@@ -1,24 +1,35 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
-import { Textarea } from "@/components/ui/textarea";
 import { FormError } from "@/components/form-message";
+import { GoalSearch } from "@/components/goal-search";
 import { createItem } from "@/lib/actions/items";
-import { BUCKET_CATEGORIES, BUCKET_VISIBILITIES } from "@/lib/supabase/database.types";
+import { BUCKET_VISIBILITIES } from "@/lib/supabase/database.types";
 import type { FormState } from "@/lib/validation";
 import type { Messages } from "@/i18n/messages/en";
+import { format } from "@/i18n/format";
+
+type Props = { locale: string; t: Pick<Messages, "items" | "errors" | "onboarding"> };
 
 /**
- * Form to add a bucket-list item. React resets the form after each submit;
- * on error, the typed values come back in state.values and are restored.
+ * Add a bucket-list item. Picking a suggestion links the item to that
+ * canonical goal; free text is matched or becomes a new pending goal.
  */
-export function NewItemForm({ t }: { t: Pick<Messages, "items" | "errors"> }) {
-  const [state, action, pending] = useActionState<FormState, FormData>(createItem, {});
+export function NewItemForm({ locale, t }: Props) {
+  const [title, setTitle] = useState("");
+  const [goalId, setGoalId] = useState<string | null>(null);
+  const [state, action, pending] = useActionState<FormState, FormData>(async (prev, formData) => {
+    const result = await createItem(prev, formData);
+    if (result.ok) {
+      setTitle("");
+      setGoalId(null);
+    }
+    return result;
+  }, {});
 
   return (
     <Card>
@@ -27,57 +38,39 @@ export function NewItemForm({ t }: { t: Pick<Messages, "items" | "errors"> }) {
       </CardHeader>
       <CardContent>
         <form action={action} className="flex flex-col gap-4">
+          <input type="hidden" name="locale" value={locale} />
+          <input type="hidden" name="goalId" value={goalId ?? ""} />
           <FormError errorKey={state.error} errors={t.errors} />
           <div className="flex flex-col gap-2">
             <Label htmlFor="title">{t.items.fieldTitle}</Label>
-            <Input
+            <GoalSearch
               id="title"
               name="title"
+              locale={locale}
+              value={title}
               placeholder={t.items.fieldTitlePlaceholder}
-              defaultValue={state.values?.title}
-              required
-              minLength={3}
-              maxLength={140}
-              aria-invalid={!!state.fieldErrors?.title}
+              wantedLabel={(count) => format(t.onboarding.dreams.wanted, { count })}
+              onChange={(text) => {
+                setTitle(text);
+                setGoalId(null);
+              }}
+              onSelect={(goal) => {
+                setTitle(goal.title);
+                setGoalId(goal.goal_id);
+              }}
             />
           </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="description">{t.items.fieldDescription}</Label>
-            <Textarea id="description" name="description" maxLength={2000} defaultValue={state.values?.description} />
+          <div className="flex flex-col gap-2 sm:max-w-48">
+            <Label htmlFor="visibility">{t.items.fieldVisibility}</Label>
+            <NativeSelect id="visibility" name="visibility" defaultValue={state.values?.visibility ?? "public"}>
+              {BUCKET_VISIBILITIES.map((v) => (
+                <option key={v} value={v}>
+                  {t.items.visibility[v]}
+                </option>
+              ))}
+            </NativeSelect>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="category">{t.items.fieldCategory}</Label>
-              <NativeSelect id="category" name="category" defaultValue={state.values?.category ?? "other"}>
-                {BUCKET_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {t.items.category[c]}
-                  </option>
-                ))}
-              </NativeSelect>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="placeName">{t.items.fieldPlace}</Label>
-              <Input
-                id="placeName"
-                name="placeName"
-                placeholder={t.items.fieldPlacePlaceholder}
-                maxLength={120}
-                defaultValue={state.values?.placeName}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="visibility">{t.items.fieldVisibility}</Label>
-              <NativeSelect id="visibility" name="visibility" defaultValue={state.values?.visibility ?? "public"}>
-                {BUCKET_VISIBILITIES.map((v) => (
-                  <option key={v} value={v}>
-                    {t.items.visibility[v]}
-                  </option>
-                ))}
-              </NativeSelect>
-            </div>
-          </div>
-          <Button type="submit" disabled={pending} className="self-start">
+          <Button type="submit" disabled={pending || title.trim().length < 3} className="self-start">
             {t.items.add}
           </Button>
         </form>

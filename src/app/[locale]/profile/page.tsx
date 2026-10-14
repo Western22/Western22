@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { requireOnboardedProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getMessages } from "@/i18n/get-messages";
@@ -31,23 +32,24 @@ export default async function ProfilePage({ params }: PageProps<"/[locale]/profi
 
 /** Reads the session and the caller's own profile at request time. */
 async function ProfileContent({ locale, t }: { locale: Locale; t: Messages }) {
-  const user = await requireUser(locale);
+  const profile = await requireOnboardedProfile(locale);
   const supabase = await createClient();
-
-  const [{ data: profile, error }, { data: hasLocation }] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("username, display_name, bio, home_city, home_country")
-      .eq("id", user.id)
-      .single(),
-    // Returns only a boolean; coordinates never leave the database.
-    supabase.rpc("has_my_location"),
-  ]);
-  if (error) throw new Error("Could not load profile");
+  // Returns only a boolean; coordinates never leave the database.
+  const { data: hasLocation, error } = await supabase.rpc("has_my_location");
+  if (error) throw new Error("Could not load location status");
 
   return (
     <>
-      <ProfileForm profile={profile} t={{ profile: t.profile, errors: t.errors }} />
+      {profile.username && (
+        <Link href={`/${locale}/u/${profile.username}`} className="text-primary -mt-3 text-sm font-medium underline-offset-4 hover:underline">
+          {t.profile.viewPublic}
+        </Link>
+      )}
+      <ProfileForm
+        locale={locale}
+        profile={profile}
+        t={{ profile: t.profile, errors: t.errors, interests: t.interests, travelStyles: t.travelStyles }}
+      />
       <LocationCard hasLocation={!!hasLocation} t={{ profile: t.profile, errors: t.errors }} />
     </>
   );

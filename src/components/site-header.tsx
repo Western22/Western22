@@ -38,7 +38,7 @@ async function UserNav({ locale, t }: { locale: Locale; t: Messages }) {
           <Link href={`/${locale}/login`}>{t.nav.signIn}</Link>
         </Button>
         <Button asChild size="sm">
-          <Link href={`/${locale}/signup`}>{t.nav.signUp}</Link>
+          <Link href={`/${locale}/login`}>{t.nav.signUp}</Link>
         </Button>
       </>
     );

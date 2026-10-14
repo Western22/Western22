@@ -3,38 +3,35 @@
 import { refresh } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
-import {
-  BUCKET_STATUSES,
-  type BucketCategory,
-  type BucketStatus,
-  type BucketVisibility,
-} from "@/lib/supabase/database.types";
+import { BUCKET_STATUSES, type BucketStatus, type BucketVisibility } from "@/lib/supabase/database.types";
 import { bucketItemSchema, echoValues, toFieldErrors, type FormState } from "@/lib/validation";
+import { defaultLocale, isLocale } from "@/i18n/config";
 
+/**
+ * Add an item through add_bucket_item(), which links it to the chosen goal
+ * (goalId) or matches/creates one from the title.
+ */
 export async function createItem(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await getCurrentUser();
   if (!user) return { error: "notSignedIn" };
 
   const parsed = bucketItemSchema.safeParse({
     title: formData.get("title"),
-    description: formData.get("description"),
-    category: formData.get("category") || undefined,
+    goalId: formData.get("goalId") || null,
     visibility: formData.get("visibility") || undefined,
-    placeName: formData.get("placeName"),
   });
-  const values = echoValues(formData, ["title", "description", "category", "visibility", "placeName"]);
+  const values = echoValues(formData, ["title", "visibility"]);
   if (!parsed.success) return { error: "invalidInput", fieldErrors: toFieldErrors(parsed.error), values };
 
+  const locale = String(formData.get("locale") ?? "");
   const supabase = await createClient();
-  const { error } = await supabase.from("bucket_items").insert({
-    owner_id: user.id,
-    title: parsed.data.title,
-    description: parsed.data.description ?? null,
-    category: parsed.data.category as BucketCategory,
-    visibility: parsed.data.visibility as BucketVisibility,
-    place_name: parsed.data.placeName ?? null,
+  const { error } = await supabase.rpc("add_bucket_item", {
+    p_title: parsed.data.title,
+    p_goal_id: parsed.data.goalId ?? null,
+    p_visibility: parsed.data.visibility as BucketVisibility,
+    p_locale: isLocale(locale) ? locale : defaultLocale,
   });
-  if (error) return { error: "generic", values };
+  if (error) return { error: error.code === "23505" ? "alreadyOnList" : "generic", values };
 
   refresh();
   return { ok: true };

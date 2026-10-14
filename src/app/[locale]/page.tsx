@@ -18,7 +18,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
         <p className="text-muted-foreground text-lg text-pretty">{t.home.heroBody}</p>
         <div className="flex flex-wrap gap-3">
           <Button asChild size="lg">
-            <Link href={`/${locale}/signup`}>{t.home.ctaStart}</Link>
+            <Link href={`/${locale}/login`}>{t.home.ctaStart}</Link>
           </Button>
           <Button asChild size="lg" variant="outline">
             <Link href={`/${locale}/explore`}>{t.home.ctaExplore}</Link>
