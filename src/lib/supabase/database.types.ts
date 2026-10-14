@@ -58,6 +58,27 @@ export type ModerationAction = "dismiss" | "warn" | "remove" | "suspend" | "unsu
 export type LocationPrecision = "standard" | "approximate";
 export type ReactionKind = "love" | "fire" | "inspired" | "congrats";
 export type FeedReason = "follow" | "group" | "on_list" | "new_group" | "trending";
+export type NotificationType =
+  | "new_match"
+  | "buddy_request"
+  | "request_accepted"
+  | "group_message"
+  | "plan_vote"
+  | "date_approaching"
+  | "story_reaction"
+  | "weekly_digest";
+export type NotificationChannel = "in_app" | "email" | "push";
+// Same order as notification_types() in migration 0010.
+export const NOTIFICATION_TYPES: readonly NotificationType[] = [
+  "new_match",
+  "buddy_request",
+  "request_accepted",
+  "group_message",
+  "plan_vote",
+  "date_approaching",
+  "story_reaction",
+  "weekly_digest",
+];
 export type BadgeSlug =
   | "first_dream"
   | "big_dreamer"
@@ -486,6 +507,51 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      // Notifications (0010). All writes go through triggers and RPCs.
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: Exclude<NotificationType, "weekly_digest">;
+          dedupe_key: string;
+          count: number;
+          actor_id: string | null;
+          group_id: string | null;
+          story_id: string | null;
+          goal_id: string | null;
+          item_id: string | null;
+          request_id: string | null;
+          data: Json;
+          show_in_app: boolean;
+          created_at: string;
+          updated_at: string;
+          read_at: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      notification_settings: {
+        Row: {
+          user_id: string;
+          timezone: string | null;
+          quiet_start: string | null;
+          quiet_end: string | null;
+          email_paused: boolean;
+          unsubscribe_token: string;
+          last_digest_at: string | null;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      push_subscriptions: {
+        Row: { id: string; user_id: string; endpoint: string; p256dh: string; auth: string; created_at: string; last_used_at: string | null };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -779,6 +845,36 @@ export type Database = {
       };
       export_my_data: { Args: Record<string, never>; Returns: Json };
       prepare_account_deletion: { Args: Record<string, never>; Returns: { bucket_id: string; name: string }[] };
+      my_notification_preferences: {
+        Args: Record<string, never>;
+        Returns: { type: NotificationType; in_app: boolean; email: boolean; push: boolean }[];
+      };
+      set_notification_preferences: {
+        Args: { p_prefs: { type: NotificationType; in_app: boolean; email: boolean; push: boolean }[] };
+        Returns: undefined;
+      };
+      update_notification_settings: {
+        Args: { p_timezone: string | null; p_quiet_start: string | null; p_quiet_end: string | null; p_email_paused: boolean };
+        Returns: undefined;
+      };
+      sync_my_timezone: { Args: { p_timezone: string }; Returns: undefined };
+      unsubscribe_email: { Args: { p_token: string; p_type?: string | null }; Returns: boolean };
+      save_push_subscription: { Args: { p_endpoint: string; p_p256dh: string; p_auth: string }; Returns: undefined };
+      delete_push_subscription: { Args: { p_endpoint: string }; Returns: undefined };
+      my_notifications: {
+        Args: { p_locale?: string; p_limit?: number; p_before?: string | null };
+        Returns: NotificationListRow[];
+      };
+      unread_notification_count: { Args: Record<string, never>; Returns: number };
+      mark_notifications_read: { Args: { p_ids?: string[] | null }; Returns: undefined };
+      export_my_notification_data: { Args: Record<string, never>; Returns: Json };
+      // Server only (secret key): the cron route.
+      queue_scheduled_notifications: { Args: Record<string, never>; Returns: { date_reminders: number; digests: number } };
+      claim_notification_deliveries: { Args: { p_limit?: number }; Returns: NotificationDeliveryRow[] };
+      finish_notification_delivery: {
+        Args: { p_delivery_id: string; p_ok: boolean; p_error?: string | null; p_expired_endpoints?: string[] | null };
+        Returns: undefined;
+      };
       profile_stats: {
         Args: { p_profile_id: string };
         Returns: { completed_count: number; active_count: number }[];
@@ -801,3 +897,51 @@ export type MyGroup = Database["public"]["Functions"]["my_groups"]["Returns"][nu
 export type GroupMessage = Database["public"]["Tables"]["group_messages"]["Row"];
 export type StoryCard = Database["public"]["Functions"]["story_cards"]["Returns"][number];
 export type FeedItem = Database["public"]["Functions"]["home_feed"]["Returns"][number];
+
+/** A row of my_notifications(): what the notification center renders. */
+export type NotificationListRow = {
+  id: string;
+  type: Exclude<NotificationType, "weekly_digest">;
+  count: number;
+  actor_name: string | null;
+  actor_username: string | null;
+  actor_avatar: string | null;
+  group_id: string | null;
+  group_name: string | null;
+  goal_title: string | null;
+  story_id: string | null;
+  item_id: string | null;
+  request_id: string | null;
+  data: { starts_on?: string; days?: number };
+  created_at: string;
+  updated_at: string;
+  read_at: string | null;
+};
+
+/** The weekly digest's content (digest_content() in 0010). */
+export type DigestData = {
+  matches: { name: string; goal: string; item_id: string }[];
+  match_count: number;
+  stories: { id: string; name: string; goal: string; caption: string; reactions: number }[];
+};
+
+/** A claimed email/push delivery (claim_notification_deliveries() in 0010). */
+export type NotificationDeliveryRow = {
+  delivery_id: string;
+  channel: "email" | "push";
+  type: NotificationType;
+  user_id: string;
+  email: string | null;
+  locale: string;
+  unsubscribe_token: string | null;
+  count: number;
+  actor_name: string | null;
+  group_id: string | null;
+  group_name: string | null;
+  goal_title: string | null;
+  story_id: string | null;
+  item_id: string | null;
+  request_id: string | null;
+  data: { starts_on?: string; days?: number } & Partial<DigestData>;
+  push_subscriptions: { endpoint: string; p256dh: string; auth: string }[] | null;
+};

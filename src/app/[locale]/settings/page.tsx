@@ -13,6 +13,8 @@ import { getMessages } from "@/i18n/get-messages";
 import type { Messages } from "@/i18n/messages/en";
 import { PhoneVerification } from "./phone-verification";
 import { DeleteAccountForm, PrivacyForm } from "./settings-forms";
+import { NotificationSettingsForm } from "./notification-settings";
+import { PushToggle } from "@/components/notifications/push-toggle";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/settings">): Promise<Metadata> {
   const { locale } = await params;
@@ -37,10 +39,13 @@ export default async function SettingsPage({ params }: PageProps<"/[locale]/sett
 async function Settings({ locale, t }: { locale: Locale; t: Messages }) {
   const profile = await requireOnboardedProfile(locale);
   const supabase = await createClient();
-  const [{ data: settings }, { data: isModerator }] = await Promise.all([
+  const [{ data: settings }, { data: isModerator }, { data: prefs }, { data: notify }] = await Promise.all([
     supabase.from("profile_settings").select("hide_from_matching, location_precision").eq("user_id", profile.id).maybeSingle(),
     supabase.rpc("is_moderator"),
+    supabase.rpc("my_notification_preferences"),
+    supabase.from("notification_settings").select("timezone, quiet_start, quiet_end, email_paused").eq("user_id", profile.id).maybeSingle(),
   ]);
+  const ns = t.notifications.settings;
   const s = t.settings;
   const v = t.verification;
   const errorsT = { settings: s, errors: t.errors };
@@ -68,6 +73,25 @@ async function Settings({ locale, t }: { locale: Locale; t: Messages }) {
           hideFromMatching={settings?.hide_from_matching ?? false}
           approximate={settings?.location_precision === "approximate"}
           t={errorsT}
+        />
+      </section>
+
+      <section id="notifications" aria-labelledby="notifications-title" className="flex scroll-mt-4 flex-col gap-3">
+        <h2 id="notifications-title" className="text-lg font-semibold">
+          {ns.title}
+        </h2>
+        <p className="text-muted-foreground text-sm">{ns.help}</p>
+        <div className="flex flex-col gap-1 rounded-xl border p-3">
+          <h3 className="text-sm font-medium">{ns.push.title}</h3>
+          <PushToggle vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || null} t={ns.push} />
+        </div>
+        <NotificationSettingsForm
+          prefs={prefs ?? []}
+          timezone={notify?.timezone ?? null}
+          quietStart={notify?.quiet_start ?? null}
+          quietEnd={notify?.quiet_end ?? null}
+          emailPaused={notify?.email_paused ?? false}
+          t={{ ns, errors: t.errors }}
         />
       </section>
 

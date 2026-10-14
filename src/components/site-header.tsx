@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Compass, Inbox, UserRound, UsersRound } from "lucide-react";
+import { Compass, Inbox, ListChecks, UserRound, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth";
 import { signOut } from "@/lib/actions/auth";
 import { createClient } from "@/lib/supabase/server";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { format } from "@/i18n/format";
 import type { Locale } from "@/i18n/config";
 import type { Messages } from "@/i18n/messages/en";
@@ -52,8 +53,8 @@ async function UserNav({ locale, t }: { locale: Locale; t: Messages }) {
   }
 
   // Pending requests waiting for this user (RLS: only requests they are part of).
-  // TODO(notifications): email or push for new requests; for now this badge is the only signal.
   const supabase = await createClient();
+  const { data: unread } = await supabase.rpc("unread_notification_count");
   const { count } = await supabase
     .from("match_requests")
     .select("id", { count: "exact", head: true })
@@ -71,7 +72,11 @@ async function UserNav({ locale, t }: { locale: Locale; t: Messages }) {
   return (
     <>
       <Button asChild variant="ghost" size="sm">
-        <Link href={`/${locale}/items`}>{t.nav.myList}</Link>
+        <Link href={`/${locale}/items`} title={t.nav.myList}>
+          {/* Icon-only on phones so the nav (now with the bell) fits at 390 px. */}
+          <ListChecks aria-hidden className="sm:hidden" />
+          <span className="max-sm:sr-only">{t.nav.myList}</span>
+        </Link>
       </Button>
       <Button asChild variant="ghost" size="sm" className="relative">
         <Link
@@ -89,6 +94,13 @@ async function UserNav({ locale, t }: { locale: Locale; t: Messages }) {
           {pending > 0 && <Badge count={pending} />}
         </Link>
       </Button>
+      <NotificationBell
+        userId={user.id}
+        locale={locale}
+        initialCount={unread ?? 0}
+        label={t.nav.notifications}
+        unreadLabel={t.nav.notificationsUnread}
+      />
       <Button asChild variant="ghost" size="sm">
         <Link href={`/${locale}/profile`} title={t.nav.profile}>
           <UserRound aria-hidden className="sm:hidden" />

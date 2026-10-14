@@ -50,6 +50,13 @@ messages, follows, reports and shares; settings to hide from matching, use an
 approximate (~25 km) location, download all your data and delete your account;
 and a community guidelines page at `/en/guidelines`.
 
+**Increment 8 (notifications):** a live notification bell and center; email
+(Resend) and web push for new matches, buddy requests, accepted requests, group
+messages (bundled), dates to vote on, trips coming up and story reactions;
+per-type In app / Email / Push settings, quiet hours in each person's time zone,
+one-click unsubscribe; and a weekly "Your bucket list digest" email. A scheduler
+calls `/api/cron/notifications` to send (see `docs/increment-8-notifications.md`).
+
 Every table has Row Level Security.
 
 ## Stack
@@ -89,7 +96,7 @@ recorded on the profile when the OAuth callback lands in `/auth/confirm`.
 ```bash
 npx tsc --noEmit && npm run lint && npm run build
 npx supabase db reset       # the RLS test expects an empty database
-supabase/tests/run_all.sh   # rls, matching, groups, social, trust_safety
+supabase/tests/run_all.sh   # rls, matching, groups, social, trust_safety, notifications
 ```
 
 Each test runs in a transaction, rolls back, and prints `ALL ... CHECKS PASSED`;
@@ -108,7 +115,10 @@ Group chat needs the Realtime service: don't exclude `realtime` when running
 5. Phone verification needs an SMS provider (Auth > Providers > Phone, e.g. Twilio,
    which is paid) and **"Confirm phone" turned on**; without it Supabase marks any
    number as verified without sending a code.
-6. Magic links on the hosted project use Supabase's built-in email sender, which is
+6. Notifications: set `CRON_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM`, the three VAPID
+   variables and `NEXT_PUBLIC_SITE_URL`, then schedule `POST /api/cron/notifications`
+   every minute (Supabase pg_cron + pg_net; steps in `docs/increment-8-notifications.md`).
+7. Magic links on the hosted project use Supabase's built-in email sender, which is
    rate-limited and meant for testing; production needs a custom SMTP provider.
 
 ## Layout
@@ -136,6 +146,10 @@ src/
     guidelines/            community guidelines (#meeting-safely for safety tips)
     share/[shareId]        read-only plan a trusted contact opens from "Share my plan"
     admin/moderation       moderation queue (moderators only; 404 for everyone else)
+    notifications/         notification center (newest first, mark all read)
+    unsubscribe/           email unsubscribe confirmation (works signed out)
+  app/api/cron/notifications  the sender: queues reminders/digests, sends due email and push
+  app/api/unsubscribe      RFC 8058 one-click unsubscribe (POST)
   app/api/export           "Download my data" (JSON)
   app/auth/confirm/        handles links from Supabase auth emails
   lib/actions/             Server Actions (validated with zod, protected by RLS)
@@ -149,6 +163,8 @@ src/
   components/groups/       join button, create-group form
   components/stories/      story card, composer, reactions, "Add to my bucket list"
   components/feed/         home feed and the one-time badge celebration
+  components/notifications/  bell (live unread count), notification list, push toggle
+  lib/notifications/       render (words + links), email (Resend / local Mailpit), push (web-push), dispatch
   components/safety/       report button, verified badge, account notices, safety tips, share my plan
   lib/moderation/          text moderation: pluggable provider (MODERATION_PROVIDER), heuristics default
   lib/verification/        ID verification provider hook (none yet; Stripe Identity notes in TODO)
@@ -167,13 +183,16 @@ supabase/
                                 home_feed, badges, follow counts,
                            0009 trust and safety: verification, reports, moderation queue
                                 and actions, suspensions, warnings, text checks, rate
-                                limits, privacy settings, plan shares, export, deletion
+                                limits, privacy settings, plan shares, export, deletion,
+                           0010 notifications: center, triggers, preferences, quiet hours,
+                                push subscriptions, outbox, date reminders, weekly digest
   tests/rls_test.sql       RLS checks (two users + anonymous)
   tests/matching_test.sql  matching, requests and blocking checks
   tests/groups_test.sql    groups, plan, chat, reports, completion checks
   tests/social_test.sql    follows, stories, tags, reactions, comments, feed, badges
   tests/trust_safety_test.sql  verification, reports, queue, suspensions, limits, privacy,
                            plan shares, export and deletion
+  tests/notifications_test.sql  triggers, bundling, preferences, quiet hours, outbox, digest
   tests/run_all.sh         runs every database test
 ```
 
@@ -229,6 +248,11 @@ supabase/
 - "Download my data" includes everything stored about you; deleting your account
   removes your profile, items, messages, stories and photos, and hands groups you
   own to the longest-standing member.
+- Notifications, preferences, settings and push subscriptions are readable only by
+  their owner. The email/push outbox has no client access at all; only the server's
+  secret key can claim deliveries, and that's the only place an email address leaves
+  `auth.users`. Blocked people can't notify you. Unsubscribe links carry a random
+  per-person token, never the address.
 - All timestamps are `timestamptz` (UTC). `target_date` is a calendar date with no time.
 
 ## Adding a language
@@ -245,10 +269,10 @@ typed as `Messages`, and register it in `src/i18n/get-messages.ts`.
 - `TODO(moderation)`: pending goals aren't in the moderation queue yet; the blocked/review
   term list in `moderation_terms` (0009) is a small English starter set.
 - `TODO(moderation-provider)`: plug in an external text classifier (`src/lib/moderation/`).
+- `TODO(notifications)`: comments, new followers and join requests don't notify yet.
 - `TODO(sms)`: production phone verification needs a paid SMS provider (local uses a test number).
 - `TODO(id-verification)`: ID checks via a provider such as Stripe Identity (`src/lib/verification/`).
 - `TODO(chat)`: load older messages (the chat shows the latest 100).
-- `TODO(notifications)`: new requests show as a badge on the header inbox; no email or push yet.
 - `TODO(stories)`: goal pages list stories newest first; consider ranking by reactions.
 - `TODO(storage)`: photos removed in the story composer stay in the bucket; clean up with a scheduled job.
 - `TODO(goal-photos)`: seeded goals use category artwork; add licensed photos with credits.
