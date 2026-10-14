@@ -57,7 +57,7 @@ export function NewItemForm({ locale, t }: Props) {
           <FormError errorKey={state.error} errors={t.errors} />
           {state.added && (
             <p role="status" className="bg-accent rounded-md px-3 py-2 text-sm">
-              {format(t.items.match[state.added.match], { goal: state.added.goalTitle })}{" "}
+              {format(t.items.match[state.added.match], { goal: state.added.goalTitle }, locale)}{" "}
               {state.added.goalSlug && (
                 <Link
                   href={`/${locale}/goals/${state.added.goalSlug}`}
@@ -76,7 +76,7 @@ export function NewItemForm({ locale, t }: Props) {
               locale={locale}
               value={title}
               placeholder={t.items.fieldTitlePlaceholder}
-              wantedLabel={(count) => format(t.onboarding.dreams.wanted, { count })}
+              wantedLabel={(count) => format(t.onboarding.dreams.wanted, { count }, locale)}
               onChange={(text) => {
                 setTitle(text);
                 setGoalId(null);

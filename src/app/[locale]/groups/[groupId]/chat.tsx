@@ -152,7 +152,7 @@ export function Chat({
   return (
     <section className="flex flex-col gap-3">
       <div className="bg-muted/30 flex h-[60vh] min-h-80 flex-col overflow-y-auto rounded-2xl border p-3">
-        {truncated && <p className="text-muted-foreground pb-2 text-center text-xs">{format(t.chat.older, { count: messages.length })}</p>}
+        {truncated && <p className="text-muted-foreground pb-2 text-center text-xs">{format(t.chat.older, { count: messages.length }, locale)}</p>}
         {/* TODO(chat): load older messages on scroll. */}
         {messages.length === 0 ? (
           <p className="text-muted-foreground m-auto text-sm">{t.chat.empty}</p>
@@ -183,7 +183,7 @@ export function Chat({
                           // eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL from private storage
                           <img
                             src={photoUrls[m.image_path]}
-                            alt={format(t.chat.photo, { name: sender?.name ?? "" })}
+                            alt={format(t.chat.photo, { name: sender?.name ?? "" }, locale)}
                             className="-mx-1 max-h-72 rounded-xl object-cover"
                           />
                         ) : (
@@ -219,7 +219,7 @@ export function Chat({
                     </span>
                     {myLast?.id === m.id && seenCount > 0 && (
                       <span className="text-muted-foreground px-1 text-[11px]">
-                        {seenCount === others.length ? t.chat.seenByAll : format(t.chat.seenBy, { count: seenCount })}
+                        {seenCount === others.length ? t.chat.seenByAll : format(t.chat.seenBy, { count: seenCount }, locale)}
                       </span>
                     )}
                   </div>

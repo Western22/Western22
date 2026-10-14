@@ -46,14 +46,14 @@ export async function HomeFeed({ userId, locale, t }: { userId: string; locale: 
 
   const reason = (item: FeedItem) =>
     item.reason === "trending"
-      ? format(f.reasons.trending, { count: item.trending_count ?? 0 })
-      : format(f.reasons[item.reason], { name: item.reason_label ?? "" });
+      ? format(f.reasons.trending, { count: item.trending_count ?? 0 }, locale)
+      : format(f.reasons[item.reason], { name: item.reason_label ?? "" }, locale);
 
   return (
     <div className="flex flex-col gap-5 pb-10">
       {badges.length > 0 && (
         <BadgeCelebration
-          title={badges.length === 1 ? format(f.newBadge, { name: t.badges[badges[0]].name }) : f.newBadges}
+          title={badges.length === 1 ? format(f.newBadge, { name: t.badges[badges[0]].name }, locale) : f.newBadges}
           badges={badges.map((b) => ({ emoji: BADGE_EMOJI[b], name: t.badges[b].name, description: t.badges[b].description }))}
           cta={f.gotIt}
         />
@@ -93,7 +93,7 @@ export async function HomeFeed({ userId, locale, t }: { userId: string; locale: 
                     </h2>
                     {group.description && <p className="text-sm">{group.description}</p>}
                     <p className="text-muted-foreground text-xs">
-                      {format(t.groups.members, { count: group.member_count, max: group.max_size })} ·{" "}
+                      {format(t.groups.members, { count: group.member_count, max: group.max_size }, locale)} ·{" "}
                       {group.join_policy === "open" ? t.groups.policy.open : t.groups.policy.request}
                     </p>
                     <Button asChild size="sm" variant="outline" className="self-start">

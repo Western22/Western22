@@ -67,7 +67,7 @@ export async function PlanTab({ ctx, locale, t }: { ctx: GroupContext; locale: L
                 <li key={o.id} className="bg-card flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border p-3">
                   <span className="font-medium">{range(o.starts_on, o.ends_on)}</span>
                   <span className="text-muted-foreground text-sm">
-                    {format(p.votes, { count: o.votes.length })}
+                    {format(p.votes, { count: o.votes.length }, locale)}
                     {o.votes.length > 0 && <> · {o.votes.map((v) => names.get(v.user_id) ?? "?").join(", ")}</>}
                   </span>
                   <DateOptionActions
@@ -98,7 +98,7 @@ export async function PlanTab({ ctx, locale, t }: { ctx: GroupContext; locale: L
         />
         {budgetInMine && (
           <p className="text-muted-foreground text-sm" data-testid="budget-converted">
-            {format(p.budgetInYourCurrency, { amount: budgetInMine })}
+            {format(p.budgetInYourCurrency, { amount: budgetInMine }, locale)}
           </p>
         )}
         <p className="text-muted-foreground text-xs">{t.safety.publicPlaces}</p>

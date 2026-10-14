@@ -61,7 +61,7 @@ export async function StoryCard({
               <span className="font-semibold">{name}</span>
             )}
             {tagged.length > 0 && (
-              <span className="text-muted-foreground"> {format(s.with, { names: tagged.map((p) => p.name).join(", ") })}</span>
+              <span className="text-muted-foreground"> {format(s.with, { names: tagged.map((p) => p.name).join(", ") }, locale)}</span>
             )}
           </p>
           <p className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 text-xs">
@@ -72,7 +72,7 @@ export async function StoryCard({
                 {story.place}
               </span>
             )}
-            {story.group_name && <span>· {format(s.inGroup, { group: story.group_name })}</span>}
+            {story.group_name && <span>· {format(s.inGroup, { group: story.group_name }, locale)}</span>}
           </p>
         </div>
       </header>
@@ -125,9 +125,9 @@ export async function StoryCard({
           <span className="text-muted-foreground flex items-center gap-3 text-sm">
             <Link href={`${storyHref}#comments`} className="flex items-center gap-1 hover:underline">
               <MessageCircle className="size-4" aria-hidden />
-              {format(s.commentCount, { count: story.comment_count })}
+              {format(s.commentCount, { count: story.comment_count }, locale)}
             </Link>
-            {story.inspired_count > 0 && <span>{format(s.inspired, { count: story.inspired_count })}</span>}
+            {story.inspired_count > 0 && <span>{format(s.inspired, { count: story.inspired_count }, locale)}</span>}
             {viewerId && !mine && (
               <ReportButton
                 targetType="story"

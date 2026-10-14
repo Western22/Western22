@@ -62,7 +62,7 @@ export function DeleteAccountForm({ confirmWord, locale, t }: { confirmWord: str
   return (
     <form action={action} className="flex flex-col gap-2">
       <input type="hidden" name="locale" value={locale} />
-      <Label htmlFor="delete-confirm">{format(d.confirm, { word: confirmWord })}</Label>
+      <Label htmlFor="delete-confirm">{format(d.confirm, { word: confirmWord }, locale)}</Label>
       <Input id="delete-confirm" name="confirm" required autoComplete="off" autoCapitalize="none" className="max-w-xs" />
       <FormError errorKey={state.error} errors={t.errors} />
       <Button type="submit" variant="destructive" size="sm" className="self-start" disabled={pending}>

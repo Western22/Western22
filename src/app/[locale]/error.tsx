@@ -1,14 +1,16 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 
-// TODO(i18n): error boundaries are client components without the messages; pass them via context.
+/** Error boundary for pages. Strings come from next-intl (provided by the root layout). */
 export default function Error({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  const t = useTranslations("errorPage");
   return (
     <div className="flex flex-col items-start gap-3">
-      <p>Something went wrong. Please try again.</p>
+      <p>{t("message")}</p>
       <Button variant="outline" onClick={reset}>
-        Try again
+        {t("retry")}
       </Button>
     </div>
   );

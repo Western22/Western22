@@ -57,13 +57,13 @@ async function MyGroups({ locale, t }: { locale: Locale; t: Messages }) {
               <span className="bg-muted shrink-0 rounded-full px-2 py-0.5 text-xs font-medium">{g.status[group.status]}</span>
             </span>
             <span className="text-muted-foreground text-sm">
-              {group.goal_title} · {format(g.members, { count: group.member_count, max: group.max_size })}
+              {group.goal_title} · {format(g.members, { count: group.member_count, max: group.max_size }, locale)}
             </span>
             {(group.unread_count > 0 || group.story_prompt || group.pending_requests > 0) && (
               <span className="flex flex-wrap gap-1.5 pt-1">
                 {group.unread_count > 0 && (
                   <span className="bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs font-medium">
-                    {format(g.unread, { count: group.unread_count })}
+                    {format(g.unread, { count: group.unread_count }, locale)}
                   </span>
                 )}
                 {group.story_prompt && (
@@ -71,7 +71,7 @@ async function MyGroups({ locale, t }: { locale: Locale; t: Messages }) {
                 )}
                 {group.pending_requests > 0 && (
                   <span className="bg-accent rounded-full px-2 py-0.5 text-xs font-medium">
-                    {format(g.requestsDue, { count: group.pending_requests })}
+                    {format(g.requestsDue, { count: group.pending_requests }, locale)}
                   </span>
                 )}
               </span>

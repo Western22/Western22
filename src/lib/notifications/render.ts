@@ -41,23 +41,23 @@ export function renderNotification(n: NotificationFacts, nt: Messages["notificat
   switch (n.type) {
     case "new_match":
       return {
-        text: many ? format(nt.text.new_match.many, { count: n.count, goal }) : format(nt.text.new_match.one, { name, goal }),
+        text: many ? format(nt.text.new_match.many, { count: n.count, goal }, locale) : format(nt.text.new_match.one, { name, goal }, locale),
         action: nt.action.new_match,
         path: n.item_id ? `/${locale}/items/${n.item_id}/matches` : `/${locale}/items`,
       };
     case "buddy_request":
-      return { text: format(nt.text.buddy_request, { name, goal }), action: nt.action.buddy_request, path: `/${locale}/requests` };
+      return { text: format(nt.text.buddy_request, { name, goal }, locale), action: nt.action.buddy_request, path: `/${locale}/requests` };
     case "request_accepted":
-      return { text: format(nt.text.request_accepted, { name, goal }), action: nt.action.request_accepted, path: `/${locale}/requests` };
+      return { text: format(nt.text.request_accepted, { name, goal }, locale), action: nt.action.request_accepted, path: `/${locale}/requests` };
     case "group_message":
       return {
-        text: many ? format(nt.text.group_message.many, { count: n.count, group }) : format(nt.text.group_message.one, { name, group }),
+        text: many ? format(nt.text.group_message.many, { count: n.count, group }, locale) : format(nt.text.group_message.one, { name, group }, locale),
         action: nt.action.group_message,
         path: groupPath("chat"),
       };
     case "plan_vote":
       return {
-        text: many ? format(nt.text.plan_vote.many, { count: n.count, group }) : format(nt.text.plan_vote.one, { name, group }),
+        text: many ? format(nt.text.plan_vote.many, { count: n.count, group }, locale) : format(nt.text.plan_vote.one, { name, group }, locale),
         action: nt.action.plan_vote,
         path: groupPath("plan"),
       };
@@ -68,13 +68,13 @@ export function renderNotification(n: NotificationFacts, nt: Messages["notificat
         ? new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(startsOn))
         : "";
       const template = n.data?.days === 1 ? nt.text.date_approaching.day : nt.text.date_approaching.week;
-      return { text: format(template, { group, date }), action: nt.action.date_approaching, path: groupPath("plan") };
+      return { text: format(template, { group, date }, locale), action: nt.action.date_approaching, path: groupPath("plan") };
     }
     case "story_reaction":
       return {
         text: many
-          ? format(nt.text.story_reaction.many, { name, others: n.count - 1, goal })
-          : format(nt.text.story_reaction.one, { name, goal }),
+          ? format(nt.text.story_reaction.many, { name, others: n.count - 1, goal }, locale)
+          : format(nt.text.story_reaction.one, { name, goal }, locale),
         action: nt.action.story_reaction,
         path: n.story_id ? `/${locale}/stories/${n.story_id}` : `/${locale}`,
       };

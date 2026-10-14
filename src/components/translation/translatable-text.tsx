@@ -87,7 +87,7 @@ export function TranslatableText({
         {showing && translation && (
           <span>
             {translation.sourceLang
-              ? format(t.translate.translatedFrom, { language: languageName(translation.sourceLang, locale) })
+              ? format(t.translate.translatedFrom, { language: languageName(translation.sourceLang, locale) }, locale)
               : t.translate.translated}
             {" ·"}
           </span>

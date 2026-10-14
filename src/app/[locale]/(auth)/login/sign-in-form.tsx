@@ -39,7 +39,7 @@ export function SignInForm({ locale, providers, t }: Props) {
           <Mail className="size-7" aria-hidden />
         </div>
         <h2 className="text-xl font-semibold">{t.auth.checkEmailTitle}</h2>
-        <p className="text-muted-foreground">{format(t.auth.checkEmailBody, { email: sentTo })}</p>
+        <p className="text-muted-foreground">{format(t.auth.checkEmailBody, { email: sentTo }, locale)}</p>
         <Button variant="link" onClick={() => setDismissed(state)}>
           {t.auth.useDifferentEmail}
         </Button>

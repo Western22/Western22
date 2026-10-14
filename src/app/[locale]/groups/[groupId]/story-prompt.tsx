@@ -14,7 +14,7 @@ export function StoryPrompt({ ctx, locale, t }: { ctx: GroupContext; locale: Loc
     <div role="status" className="flex flex-col gap-2 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
       <p className="flex items-start gap-2 text-sm font-medium">
         <PartyPopper className="mt-0.5 size-4 shrink-0" aria-hidden />
-        {format(g.storyPrompt, { goal: ctx.goalTitle })}
+        {format(g.storyPrompt, { goal: ctx.goalTitle }, locale)}
       </p>
       <div className="flex gap-2">
         <Button asChild size="sm">

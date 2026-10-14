@@ -75,7 +75,7 @@ export function RegionSettingsForm({
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="region-currency">{r.currency}</Label>
           <NativeSelect id="region-currency" name="currency" defaultValue={currency ?? ""}>
-            <option value="">{format(r.automatic, { value: auto.currency })}</option>
+            <option value="">{format(r.automatic, { value: auto.currency }, locale)}</option>
             {sortedCurrencies.map((c) => (
               <option key={c} value={c}>
                 {currencyName(c, locale)} ({c})
@@ -86,7 +86,7 @@ export function RegionSettingsForm({
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="region-units">{r.units}</Label>
           <NativeSelect id="region-units" name="units" defaultValue={units ?? ""}>
-            <option value="">{format(r.automatic, { value: r[auto.units] })}</option>
+            <option value="">{format(r.automatic, { value: r[auto.units] }, locale)}</option>
             <option value="metric">{r.metric}</option>
             <option value="imperial">{r.imperial}</option>
           </NativeSelect>

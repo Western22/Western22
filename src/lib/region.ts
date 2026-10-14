@@ -93,11 +93,11 @@ export function formatBudget(
     formatMoney(converted ? roughly(usd * (region.perUsd ?? 1)) : usd, region.currency, region.locale);
   const text =
     min === null
-      ? format(t.under, { max: money(max as number) })
+      ? format(t.under, { max: money(max as number) }, region.locale)
       : max === null
-        ? format(t.over, { min: money(min) })
-        : format(t.between, { min: money(min), max: money(max) });
-  return converted ? format(t.approx, { amount: text }) : text;
+        ? format(t.over, { min: money(min) }, region.locale)
+        : format(t.between, { min: money(min), max: money(max) }, region.locale);
+  return converted ? format(t.approx, { amount: text }, region.locale) : text;
 }
 
 /** All four budget ranges for the viewer, keyed like Messages["items"]["budget"]. */
@@ -124,7 +124,7 @@ export function convertedAmount(
   const fromPerUsd = fromCurrency === "USD" ? 1 : rates[fromCurrency];
   const toPerUsd = region.currency === "USD" ? 1 : rates[region.currency];
   if (!fromPerUsd || !toPerUsd) return null;
-  return format(approx, { amount: formatMoney(roughly((amount / fromPerUsd) * toPerUsd), region.currency, region.locale) });
+  return format(approx, { amount: formatMoney(roughly((amount / fromPerUsd) * toPerUsd), region.currency, region.locale) }, region.locale);
 }
 
 /** A distance in the viewer's units, e.g. "25 km" or "16 mi", localized. */

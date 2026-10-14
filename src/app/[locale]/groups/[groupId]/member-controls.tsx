@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale } from "next-intl";
 import { useActionState, useState, useTransition } from "react";
 import { Check, LogOut, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ export function JoinRequestButtons({ requestId, name, t }: { requestId: string; 
 }
 
 export function RemoveMemberButton({ groupId, userId, name, t }: { groupId: string; userId: string; name: string; t: T }) {
+  const locale = useLocale();
   const [pending, startTransition] = useTransition();
   return (
     <Button
@@ -47,7 +49,7 @@ export function RemoveMemberButton({ groupId, userId, name, t }: { groupId: stri
       disabled={pending}
       aria-label={`${t.members.remove}: ${name}`}
       onClick={() => {
-        if (!window.confirm(format(t.members.removeConfirm, { name }))) return;
+        if (!window.confirm(format(t.members.removeConfirm, { name }, locale))) return;
         startTransition(async () => void (await removeGroupMember(groupId, userId)));
       }}
     >

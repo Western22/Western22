@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale } from "next-intl";
 import { useOptimistic, useTransition } from "react";
 import { setReaction } from "@/lib/actions/social";
 import { REACTION_KINDS, type ReactionKind } from "@/lib/supabase/database.types";
@@ -25,6 +26,7 @@ export function ReactionBar({
   canReact: boolean;
   t: Messages["stories"];
 }) {
+  const locale = useLocale();
   const [, startTransition] = useTransition();
   const [state, toggle] = useOptimistic<State, ReactionKind>({ counts, mine }, (prev, kind) => {
     const on = !prev.mine.includes(kind);
@@ -46,7 +48,7 @@ export function ReactionBar({
             type="button"
             disabled={!canReact}
             aria-pressed={active}
-            aria-label={format(t.reactionCount, { label: t.reactions[kind], count })}
+            aria-label={format(t.reactionCount, { label: t.reactions[kind], count }, locale)}
             title={t.reactions[kind]}
             onClick={() =>
               startTransition(async () => {

@@ -43,7 +43,7 @@ async function Unsubscribe({
     return <p className="text-muted-foreground">{u.invalid}</p>;
   }
   const question =
-    kind === "all" ? format(u.confirmAll, { app: t.app.name }) : format(u.confirm, { what: t.notifications.settings.types[kind] });
+    kind === "all" ? format(u.confirmAll, { app: t.app.name }, locale) : format(u.confirm, { what: t.notifications.settings.types[kind] }, locale);
   return (
     <UnsubscribeForm
       token={token}

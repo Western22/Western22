@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale } from "next-intl";
 import { useActionState, useState } from "react";
 import { Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ export function ReportButton({
   t: ReportT;
   className?: string;
 }) {
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState<FormState, FormData>(reportContent, {});
   const r = t.report;
@@ -81,7 +83,7 @@ export function ReportButton({
         <label className="flex items-center gap-2">
           <input type="checkbox" name="block" className="accent-primary" />
           <input type="hidden" name="blockUserId" value={blockUser.id} />
-          {format(r.blockToo, { name: blockUser.name })}
+          {format(r.blockToo, { name: blockUser.name }, locale)}
         </label>
       )}
       <p className="text-muted-foreground text-xs">{r.emergency}</p>

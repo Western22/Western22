@@ -24,8 +24,8 @@ export function matchReasons(
   const year = now.getUTCFullYear();
 
   if (match.their_timeframe === mine.timeframe) {
-    if (mine.timeframe === "this_year") reasons.push(format(r.sameYear, { year }));
-    else if (mine.timeframe === "one_to_three_years") reasons.push(format(r.sameRange, { from: year + 1, to: year + 3 }));
+    if (mine.timeframe === "this_year") reasons.push(format(r.sameYear, { year }, locale));
+    else if (mine.timeframe === "one_to_three_years") reasons.push(format(r.sameRange, { from: year + 1, to: year + 3 }, locale));
     else reasons.push(r.someday);
   } else if (match.timeframe_score >= 0.5) {
     reasons.push(r.similarTiming);
@@ -36,22 +36,22 @@ export function matchReasons(
     const langs = [...match.shared_languages].sort((a, b) => Number(a === "en") - Number(b === "en"));
     const language = languageName(langs[0], locale);
     reasons.push(
-      langs.length > 1 ? format(r.speaksMore, { language, count: langs.length - 1 }) : format(r.speaks, { language }),
+      langs.length > 1 ? format(r.speaksMore, { language, count: langs.length - 1 }, locale) : format(r.speaks, { language }, locale),
     );
   }
 
   if (match.distance_km !== null) {
     reasons.push(
       match.distance_km <= 25
-        ? format(r.underKm, { distance: formatDistance(25, region) })
-        : format(r.km, { distance: formatDistance(match.distance_km, region) }),
+        ? format(r.underKm, { distance: formatDistance(25, region) }, locale)
+        : format(r.km, { distance: formatDistance(match.distance_km, region) }, locale),
     );
   }
   if (match.is_worldwide && (match.distance_km === null || match.distance_km > 300)) reasons.push(r.worldwide);
 
   if (match.shared_styles.length > 0) {
     const style = t.travelStyles[match.shared_styles[0] as keyof Messages["travelStyles"]];
-    if (style) reasons.push(format(r.style, { style: style.toLowerCase() }));
+    if (style) reasons.push(format(r.style, { style: style.toLowerCase() }, locale));
   }
 
   if (mine.budget && match.their_budget === mine.budget) reasons.push(r.budget);

@@ -235,8 +235,8 @@ function GoalCard({
   const distance =
     showDistance && goal.distance_km !== null
       ? goal.distance_km < 10
-        ? format(t.explore.nearby, { distance: formatDistance(10, region) })
-        : format(t.explore.distance, { distance: formatDistance(goal.distance_km, region) })
+        ? format(t.explore.nearby, { distance: formatDistance(10, region) }, locale)
+        : format(t.explore.distance, { distance: formatDistance(goal.distance_km, region) }, locale)
       : null;
   return (
     <li>
@@ -255,7 +255,7 @@ function GoalCard({
           )}
           {goal.wanted_count > 0 && (
             <span className="text-muted-foreground mt-auto pt-1 text-xs">
-              {format(t.explore.wanted, { count: goal.wanted_count })}
+              {format(t.explore.wanted, { count: goal.wanted_count }, locale)}
             </span>
           )}
         </div>

@@ -57,12 +57,13 @@ per-type In app / Email / Push settings, quiet hours in each person's time zone,
 one-click unsubscribe; and a weekly "Your bucket list digest" email. A scheduler
 calls `/api/cron/notifications` to send (see `docs/increment-8-notifications.md`).
 
-**Increment 9 (going global, part 1):** a Translate button on stories, comments
+**Increment 9 (going global):** next-intl with English live and message files
+for Spanish, Portuguese, French, German, Polish, Hindi and Japanese (partly
+translated, English fallback); a Translate button on stories, comments
 and chat messages (DeepL by default, Google or LibreTranslate by setting; cached
 and rate-limited); budgets shown in each person's currency (European Central
 Bank daily rates) and distances in km or miles; a "Language and region" section
-in Settings; layouts ready for right-to-left languages. The move to next-intl and
-the seven new languages follow (see `docs/increment-9-global.md`).
+in Settings; layouts ready for right-to-left languages (see `docs/increment-9-global.md`).
 
 Every table has Row Level Security.
 
@@ -267,8 +268,11 @@ supabase/
 
 ## Adding a language
 
-Add the code to `src/i18n/config.ts`, create `src/i18n/messages/<code>.ts`
-typed as `Messages`, and register it in `src/i18n/get-messages.ts`.
+Add the code to `locales` in `src/i18n/config.ts`, create
+`src/i18n/messages/<code>.ts` typed as `PartialMessages` (missing strings fall back
+to English), and register it in `src/i18n/get-messages.ts`. When it's complete and
+reviewed, add it to `liveLocales` so people can pick it. Right-to-left languages
+(Arabic, Hebrew) get `dir="rtl"` automatically.
 
 ## Known TODOs
 
@@ -287,4 +291,4 @@ typed as `Messages`, and register it in `src/i18n/get-messages.ts`.
 - `TODO(storage)`: photos removed in the story composer stay in the bucket; clean up with a scheduled job.
 - `TODO(goal-photos)`: seeded goals use category artwork; add licensed photos with credits.
 - `TODO(feed)`: paginate Explore; send signed-in people who haven't onboarded to /welcome from home.
-- `TODO(i18n)`: `not-found` and `error` pages are English-only until next-intl is in.
+- `TODO(i18n)`: the seven new languages are partly translated; finish and review each before adding it to `liveLocales`.

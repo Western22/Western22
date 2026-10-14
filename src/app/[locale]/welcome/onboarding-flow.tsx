@@ -267,7 +267,7 @@ export function OnboardingFlow({ locale, profile, featured, initialItems, t }: P
                 />
               ))}
           </div>
-          <p className="text-muted-foreground text-xs">{format(o.stepOf, { step: index + 1, total: countedSteps })}</p>
+          <p className="text-muted-foreground text-xs">{format(o.stepOf, { step: index + 1, total: countedSteps }, locale)}</p>
         </div>
       )}
 
@@ -399,7 +399,7 @@ export function OnboardingFlow({ locale, profile, featured, initialItems, t }: P
             </p>
             <div className="flex flex-col gap-2">
               <p className="text-sm font-medium">{o.home.languages}</p>
-              <p className="text-muted-foreground text-xs">{format(o.home.languagesHint, { max: MAX_LANGUAGES })}</p>
+              <p className="text-muted-foreground text-xs">{format(o.home.languagesHint, { max: MAX_LANGUAGES }, locale)}</p>
               <ChipPicker
                 options={LANGUAGE_CODES}
                 selected={languages}
@@ -459,10 +459,10 @@ export function OnboardingFlow({ locale, profile, featured, initialItems, t }: P
         {step === "dreams" && (
           <div className="flex flex-col gap-5">
             <Header eyebrow={o.dreams.eyebrow} title={o.dreams.title} body={o.dreams.body} />
-            <DreamMeter count={items.length} label={format(o.dreams.added, { count: items.length, target: FIRST_ITEMS_TARGET })} />
+            <DreamMeter count={items.length} label={format(o.dreams.added, { count: items.length, target: FIRST_ITEMS_TARGET }, locale)} />
 
             {items.length > 0 && (
-              <ul className="flex flex-wrap gap-2" aria-label={format(o.dreams.added, { count: items.length, target: FIRST_ITEMS_TARGET })}>
+              <ul className="flex flex-wrap gap-2" aria-label={format(o.dreams.added, { count: items.length, target: FIRST_ITEMS_TARGET }, locale)}>
                 {items.map((item) => (
                   <li key={item.itemId} className="animate-pop bg-primary text-primary-foreground flex items-center gap-1 rounded-full py-1 pe-1 ps-3 text-sm shadow-sm">
                     {item.title}
@@ -486,7 +486,7 @@ export function OnboardingFlow({ locale, profile, featured, initialItems, t }: P
               onChange={setQuery}
               onSelect={(goal) => addDream(goal.title, goal.goal_id)}
               placeholder={o.dreams.searchPlaceholder}
-              wantedLabel={(count) => format(o.dreams.wanted, { count })}
+              wantedLabel={(count) => format(o.dreams.wanted, { count }, locale)}
               footer={
                 query.trim().length >= 3 ? (
                   <button
@@ -496,7 +496,7 @@ export function OnboardingFlow({ locale, profile, featured, initialItems, t }: P
                     onClick={() => addDream(query.trim(), null)}
                   >
                     <Plus className="size-4" aria-hidden />
-                    {format(o.dreams.addOwn, { title: query.trim() })}
+                    {format(o.dreams.addOwn, { title: query.trim() }, locale)}
                   </button>
                 ) : undefined
               }
@@ -524,7 +524,7 @@ export function OnboardingFlow({ locale, profile, featured, initialItems, t }: P
                       </span>
                       <span className="text-sm leading-snug font-medium">{goal.title}</span>
                       {goal.wanted_count > 0 && (
-                        <span className="text-muted-foreground text-xs">{format(o.dreams.wanted, { count: goal.wanted_count })}</span>
+                        <span className="text-muted-foreground text-xs">{format(o.dreams.wanted, { count: goal.wanted_count }, locale)}</span>
                       )}
                       {added && (
                         <span className="animate-pop bg-primary text-primary-foreground absolute top-2 end-2 rounded-full p-1">
@@ -542,7 +542,7 @@ export function OnboardingFlow({ locale, profile, featured, initialItems, t }: P
         {step === "done" && (
           <div className="flex flex-col items-start gap-4">
             <h1 id="step-title" className="animate-pop text-3xl font-bold tracking-tight text-balance">
-              {firstName ? format(o.done.title, { name: firstName }) : o.done.titleNoName}
+              {firstName ? format(o.done.title, { name: firstName }, locale) : o.done.titleNoName}
             </h1>
             <p className="text-muted-foreground text-pretty">{o.done.body}</p>
             {items.length > 0 && (

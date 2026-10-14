@@ -59,7 +59,7 @@ export async function MembersTab({ ctx, locale, t }: { ctx: GroupContext; locale
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">
           {t.groups.tabs.members}{" "}
-          <span className="text-muted-foreground font-normal">{format(t.groups.members, { count: ctx.memberCount, max: ctx.maxSize })}</span>
+          <span className="text-muted-foreground font-normal">{format(t.groups.members, { count: ctx.memberCount, max: ctx.maxSize }, locale)}</span>
         </h2>
         <ul className="flex flex-col gap-2">
           {(members ?? []).map((member) => {
@@ -87,7 +87,7 @@ export async function MembersTab({ ctx, locale, t }: { ctx: GroupContext; locale
                       <span className="bg-primary/10 text-primary ms-2 rounded-full px-2 py-0.5 text-xs">{m.owner}</span>
                     )}
                   </p>
-                  <p className="text-muted-foreground text-xs">{format(m.joinedOn, { date: dateFormat.format(new Date(member.joined_at)) })}</p>
+                  <p className="text-muted-foreground text-xs">{format(m.joinedOn, { date: dateFormat.format(new Date(member.joined_at)) }, locale)}</p>
                 </div>
                 {ctx.isOwner && member.user_id !== ctx.me && (
                   <RemoveMemberButton groupId={ctx.id} userId={member.user_id} name={name} t={tm} />

@@ -66,7 +66,7 @@ export function NotificationBell({
     <Button asChild variant="ghost" size="sm" className="relative">
       <Link
         href={`/${locale}/notifications`}
-        aria-label={count > 0 ? format(unreadLabel, { count }) : label}
+        aria-label={count > 0 ? format(unreadLabel, { count }, locale) : label}
         title={label}
         data-testid="notification-bell"
       >

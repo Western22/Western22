@@ -84,7 +84,7 @@ async function Queue({
               <li key={`${item.target_type}-${item.target_id}`} className="bg-card flex flex-col gap-2 rounded-2xl border p-4 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="bg-muted rounded-full px-2 py-0.5 text-xs font-semibold">{a.targetTypes[item.target_type]}</span>
-                  <span className="font-medium">{format(a.reports, { count: item.report_count })}</span>
+                  <span className="font-medium">{format(a.reports, { count: item.report_count }, locale)}</span>
                   {item.auto_flagged && (
                     <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-100">
                       <Bot className="size-3" aria-hidden />
@@ -93,7 +93,7 @@ async function Queue({
                   )}
                   {person && (
                     <span className="text-muted-foreground">
-                      {format(a.by, { name: person })}
+                      {format(a.by, { name: person }, locale)}
                       {item.target_username && (
                         <>
                           {" · "}
@@ -121,7 +121,7 @@ async function Queue({
                 <p className="text-muted-foreground">
                   {item.reasons.map((r) => (r === "auto" ? a.auto : t.report.reasons[r])).join(", ")}
                   {" · "}
-                  {format(a.reported, { date: when.format(new Date(item.last_reported_at)) })}
+                  {format(a.reported, { date: when.format(new Date(item.last_reported_at)) }, locale)}
                 </p>
                 {item.details.length > 0 && (
                   <ul className="text-muted-foreground list-disc ps-5">
@@ -132,9 +132,9 @@ async function Queue({
                 )}
                 {(item.suspended_until || item.warning_count > 0) && (
                   <p className="text-muted-foreground">
-                    {item.suspended_until && format(a.suspendedUntil, { date: when.format(new Date(item.suspended_until)) })}
+                    {item.suspended_until && format(a.suspendedUntil, { date: when.format(new Date(item.suspended_until)) }, locale)}
                     {item.suspended_until && item.warning_count > 0 && " · "}
-                    {item.warning_count > 0 && format(a.warnings, { count: item.warning_count })}
+                    {item.warning_count > 0 && format(a.warnings, { count: item.warning_count }, locale)}
                   </p>
                 )}
                 {status === "open" && (

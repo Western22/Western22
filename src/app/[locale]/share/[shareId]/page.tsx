@@ -42,8 +42,8 @@ async function SharedPlan({ params }: { params: PageProps<"/[locale]/share/[shar
   return (
     <article className="flex flex-col gap-5 pb-10">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">{format(sp.title, { name: plan.sharer_name })}</h1>
-        <p className="text-muted-foreground text-pretty">{format(sp.intro, { name: plan.sharer_name, app: t.app.name })}</p>
+        <h1 className="text-2xl font-bold tracking-tight text-balance">{format(sp.title, { name: plan.sharer_name }, locale)}</h1>
+        <p className="text-muted-foreground text-pretty">{format(sp.intro, { name: plan.sharer_name, app: t.app.name }, locale)}</p>
       </header>
       <dl className="bg-card grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-2xl border p-4 text-sm">
         <dt className="text-muted-foreground">{sp.goal}</dt>
@@ -66,7 +66,7 @@ async function SharedPlan({ params }: { params: PageProps<"/[locale]/share/[shar
             <ul className="flex flex-col gap-0.5">
               {plan.dates.slice(0, 3).map((d) => (
                 <li key={`${d.starts_on}-${d.ends_on}`}>
-                  {range(d.starts_on, d.ends_on)} <span className="text-muted-foreground">· {format(sp.votes, { count: d.votes })}</span>
+                  {range(d.starts_on, d.ends_on)} <span className="text-muted-foreground">· {format(sp.votes, { count: d.votes }, locale)}</span>
                 </li>
               ))}
             </ul>
@@ -77,10 +77,10 @@ async function SharedPlan({ params }: { params: PageProps<"/[locale]/share/[shar
       </dl>
       <p className="flex gap-2 text-sm">
         <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
-        {format(sp.worried, { name: plan.sharer_name })}
+        {format(sp.worried, { name: plan.sharer_name }, locale)}
       </p>
       <p className="text-muted-foreground text-xs">
-        {format(sp.expires, { date: new Date(plan.expires_at).toLocaleDateString(locale, { dateStyle: "medium" }) })}
+        {format(sp.expires, { date: new Date(plan.expires_at).toLocaleDateString(locale, { dateStyle: "medium" }) }, locale)}
       </p>
     </article>
   );

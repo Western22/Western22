@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ export function PhoneVerification({
 }) {
   const v = t.verification;
   const router = useRouter();
+  const locale = useLocale();
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [sentTo, setSentTo] = useState<string | null>(null);
@@ -110,7 +112,7 @@ export function PhoneVerification({
           }}
         >
           <p role="status" className="w-full text-sm">
-            {format(v.sent, { phone: sentTo })}
+            {format(v.sent, { phone: sentTo }, locale)}
           </p>
           <div className="flex flex-col gap-1">
             <Label htmlFor="phone-code">{v.code}</Label>

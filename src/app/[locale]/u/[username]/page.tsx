@@ -110,7 +110,7 @@ async function PublicProfile({ params }: { params: PageProps<"/[locale]/u/[usern
         {place && (
           <p className="text-muted-foreground flex items-center gap-1 text-sm">
             <MapPin className="size-4" aria-hidden />
-            {format(p.from, { place })}
+            {format(p.from, { place }, locale)}
           </p>
         )}
         {profile.bio && <p className="max-w-prose text-pretty">{profile.bio}</p>}
@@ -150,7 +150,7 @@ async function PublicProfile({ params }: { params: PageProps<"/[locale]/u/[usern
           <BlockButton
             userId={profile.id}
             blocked={blocked}
-            t={{ block: p.block, unblock: p.unblock, confirm: format(p.blockConfirm, { name }) }}
+            t={{ block: p.block, unblock: p.unblock, confirm: format(p.blockConfirm, { name }, locale) }}
           />
         )}
         {viewer && viewer.id !== profile.id && (

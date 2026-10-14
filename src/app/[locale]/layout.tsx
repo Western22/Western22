@@ -6,6 +6,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { SiteHeader } from "@/components/site-header";
 import { AccountNotices } from "@/components/safety/account-notices";
 import { isLocale, localeDirection, locales } from "@/i18n/config";
+import { NextIntlClientProvider } from "next-intl";
+import { setRequestLocale } from "next-intl/server";
 import { getMessages } from "@/i18n/get-messages";
 import "../globals.css";
 
@@ -28,11 +30,16 @@ export async function generateMetadata({ params }: LayoutProps<"/[locale]">): Pr
 export default async function LocaleLayout({ children, params }: LayoutProps<"/[locale]">) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
+  setRequestLocale(locale);
   const t = await getMessages(locale);
+  // Client components mostly get their strings as props from server pages;
+  // only the error and not-found pages read them from next-intl directly.
+  const clientMessages = { errorPage: t.errorPage, notFound: t.notFound };
 
   return (
     <html lang={locale} dir={localeDirection(locale)} className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
+        <NextIntlClientProvider locale={locale} messages={clientMessages} timeZone="UTC">
         <SiteHeader locale={locale} t={t} />
         <Suspense fallback={null}>
           <AccountNotices locale={locale} t={t} />
@@ -48,6 +55,7 @@ export default async function LocaleLayout({ children, params }: LayoutProps<"/[
             </Link>
           </nav>
         </footer>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

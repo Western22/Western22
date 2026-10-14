@@ -67,7 +67,7 @@ async function UserNav({ locale, t }: { locale: Locale; t: Messages }) {
     (n, g) => n + g.unread_count + g.pending_requests + (g.story_prompt ? 1 : 0),
     0,
   );
-  const requestsLabel = pending > 0 ? `${t.nav.requests}, ${format(t.nav.requestsPending, { count: pending })}` : t.nav.requests;
+  const requestsLabel = pending > 0 ? `${t.nav.requests}, ${format(t.nav.requestsPending, { count: pending }, locale)}` : t.nav.requests;
 
   return (
     <>
@@ -81,7 +81,7 @@ async function UserNav({ locale, t }: { locale: Locale; t: Messages }) {
       <Button asChild variant="ghost" size="sm" className="relative">
         <Link
           href={`/${locale}/groups`}
-          aria-label={groupActivity > 0 ? `${t.nav.groups}, ${format(t.nav.requestsPending, { count: groupActivity })}` : t.nav.groups}
+          aria-label={groupActivity > 0 ? `${t.nav.groups}, ${format(t.nav.requestsPending, { count: groupActivity }, locale)}` : t.nav.groups}
           title={t.nav.groups}
         >
           <UsersRound aria-hidden />

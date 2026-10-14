@@ -39,7 +39,7 @@ export function SharePlan({
   const [copied, setCopied] = useState(false);
   const [revoking, startRevoke] = useTransition();
   const url = state.shareId && typeof window !== "undefined" ? `${window.location.origin}/${locale}/share/${state.shareId}` : null;
-  const message = url ? format(s.message, { group: groupName, url }) : "";
+  const message = url ? format(s.message, { group: groupName, url }, locale) : "";
 
   return (
     <section aria-labelledby="share-plan-title" className="flex flex-col gap-3">
@@ -71,7 +71,7 @@ export function SharePlan({
       <FormError errorKey={state.error} errors={t.errors} />
       {url && (
         <div role="status" className="bg-muted/50 flex flex-col gap-2 rounded-lg border p-3 text-sm">
-          <p className="font-medium">{format(s.ready, { name: shares.find((x) => x.id === state.shareId)?.contact_name ?? "" })}</p>
+          <p className="font-medium">{format(s.ready, { name: shares.find((x) => x.id === state.shareId)?.contact_name ?? "" }, locale)}</p>
           <Input readOnly value={url} aria-label={s.copy} onFocus={(e) => e.currentTarget.select()} />
           <div className="flex flex-wrap gap-2">
             <Button
@@ -103,7 +103,7 @@ export function SharePlan({
                   {format(s.expires, {
                     name: share.contact_name,
                     date: new Date(share.expires_at).toLocaleDateString(locale, { dateStyle: "medium" }),
-                  })}
+                  }, locale)}
                 </span>
                 <Button type="button" size="sm" variant="ghost" disabled={revoking} onClick={() => startRevoke(() => revokePlanShare(share.id))}>
                   {s.revoke}

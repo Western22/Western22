@@ -32,7 +32,7 @@ export async function AccountNotices({ locale, t }: { locale: Locale; t: Message
           <p>
             {forever
               ? n.suspendedIndefinitely
-              : format(n.suspended, { date: new Date(until!).toLocaleDateString(locale, { dateStyle: "medium" }) })}{" "}
+              : format(n.suspended, { date: new Date(until!).toLocaleDateString(locale, { dateStyle: "medium" }) }, locale)}{" "}
             <Link href={`/${locale}/guidelines`} className="underline">
               {n.guidelines}
             </Link>

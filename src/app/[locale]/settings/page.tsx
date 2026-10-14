@@ -8,7 +8,7 @@ import { requireOnboardedProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { idVerificationProvider } from "@/lib/verification/id-provider";
 import { VerifiedBadge } from "@/components/safety/verified-badge";
-import { isLocale, locales, type Locale } from "@/i18n/config";
+import { isLocale, liveLocales, type Locale } from "@/i18n/config";
 import { getMessages } from "@/i18n/get-messages";
 import type { Messages } from "@/i18n/messages/en";
 import { PhoneVerification } from "./phone-verification";
@@ -81,7 +81,7 @@ async function Settings({ locale, t }: { locale: Locale; t: Messages }) {
         </h2>
         <RegionSettingsForm
           locale={locale}
-          languages={locales}
+          languages={liveLocales}
           currencies={["USD", ...Object.keys(rates)].filter((c, i, all) => all.indexOf(c) === i)}
           currency={settings?.currency ?? null}
           units={(settings?.units as "metric" | "imperial" | null) ?? null}

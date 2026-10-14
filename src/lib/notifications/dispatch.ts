@@ -112,14 +112,14 @@ function buildEmail(d: NotificationDeliveryRow, t: Messages, locale: string, sit
     const dt = t.notifications.digest;
     const footer = emailFooter(t, links, dt.why);
     const matchLines = (digest.matches ?? []).map((m) => ({
-      text: format(dt.matchLine, { name: m.name, goal: m.goal }),
+      text: format(dt.matchLine, { name: m.name, goal: m.goal }, locale),
       href: `${siteUrl}/${locale}/items/${m.item_id}/matches`,
     }));
     const more = (digest.match_count ?? 0) - matchLines.length;
     const storyLines = (digest.stories ?? []).map((s) => ({
-      text: format(dt.storyLine, { name: s.name, goal: s.goal }),
+      text: format(dt.storyLine, { name: s.name, goal: s.goal }, locale),
       caption: s.caption,
-      reactions: format(dt.reactions, { count: s.reactions }),
+      reactions: format(dt.reactions, { count: s.reactions }, locale),
       href: `${siteUrl}/${locale}/stories/${s.id}`,
     }));
     const list = (items: string[]) => `<ul style="padding-left:20px;margin:8px 0 16px">${items.join("")}</ul>`;
@@ -128,7 +128,7 @@ function buildEmail(d: NotificationDeliveryRow, t: Messages, locale: string, sit
       matchLines.length > 0
         ? `<p style="font-weight:600;margin:0">${escapeHtml(dt.matchesTitle)}</p>` +
           list(matchLines.map((m) => `<li><a href="${escapeHtml(m.href)}" style="color:#1c1917">${escapeHtml(m.text)}</a></li>`)) +
-          (more > 0 ? `<p style="margin:-8px 0 16px;color:#78716c">${escapeHtml(format(dt.moreMatches, { count: more }))}</p>` : "")
+          (more > 0 ? `<p style="margin:-8px 0 16px;color:#78716c">${escapeHtml(format(dt.moreMatches, { count: more }, locale))}</p>` : "")
         : "",
       storyLines.length > 0
         ? `<p style="font-weight:600;margin:0">${escapeHtml(dt.storiesTitle)}</p>` +
@@ -140,12 +140,12 @@ function buildEmail(d: NotificationDeliveryRow, t: Messages, locale: string, sit
             ),
           )
         : "",
-      emailButton(format(dt.cta, { app: appName }), `${siteUrl}/${locale}`),
+      emailButton(format(dt.cta, { app: appName }, locale), `${siteUrl}/${locale}`),
     ].join("");
     const text = [
       dt.intro,
       ...(matchLines.length > 0 ? ["", dt.matchesTitle, ...matchLines.map((m) => `- ${m.text}: ${m.href}`)] : []),
-      ...(more > 0 ? [format(dt.moreMatches, { count: more })] : []),
+      ...(more > 0 ? [format(dt.moreMatches, { count: more }, locale)] : []),
       ...(storyLines.length > 0 ? ["", dt.storiesTitle, ...storyLines.map((s) => `- ${s.text}: ${s.href}`)] : []),
       "",
       `${siteUrl}/${locale}`,

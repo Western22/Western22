@@ -1,7 +1,9 @@
 /**
  * English UI strings. This file defines the shape every other locale must
  * match (see `Messages` below), so a missing translation is a type error.
- * Placeholders like {name} are filled with `format()` from i18n/format.ts.
+ * Messages use ICU MessageFormat (next-intl): {name} placeholders, and
+ * {count, plural, ...} where a language needs plural forms. They're filled
+ * with `format(message, values, locale)` from i18n/format.ts.
  */
 const en = {
   app: {
@@ -865,6 +867,14 @@ const en = {
   common: {
     loading: "Loading…",
     osmCredit: "City lookup © OpenStreetMap contributors",
+  },
+  errorPage: {
+    message: "Something went wrong. Please try again.",
+    retry: "Try again",
+  },
+  notFound: {
+    message: "Page not found.",
+    home: "Go to the home page",
   },
   translate: {
     button: "Translate",

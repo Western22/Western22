@@ -66,7 +66,7 @@ async function Matches({ params }: { params: PageProps<"/[locale]/items/[itemId]
         {m.backToList}
       </Link>
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-balance">{format(m.title, { goal: goalTitle ?? "" })}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-balance">{format(m.title, { goal: goalTitle ?? "" }, locale)}</h1>
         <p className="text-muted-foreground">{m.subtitle}</p>
         {item.goal && (
           <Link href={`/${locale}/goals/${item.goal.slug}`} className="text-primary text-sm underline-offset-4 hover:underline">
@@ -145,7 +145,7 @@ function MatchCard({
           {place && <p className="text-muted-foreground truncate text-sm">{place}</p>}
         </div>
         <span className="bg-primary/10 text-primary shrink-0 rounded-full px-2.5 py-1 text-sm font-semibold">
-          {format(m.score, { score: match.score })}
+          {format(m.score, { score: match.score }, locale)}
         </span>
       </div>
 

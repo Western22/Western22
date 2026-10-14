@@ -83,7 +83,7 @@ async function Goal({ params }: { params: PageProps<"/[locale]/goals/[slug]">["p
         <GoalArt category={goal.category_slug} photoUrl={goal.photo_url} className="h-48 w-full sm:h-64" emojiClassName="text-7xl" />
         {goal.photo_credit && (
           <p className="absolute end-2 bottom-2 rounded bg-black/50 px-2 py-0.5 text-xs text-white">
-            {format(g.photoCredit, { credit: goal.photo_credit })}
+            {format(g.photoCredit, { credit: goal.photo_credit }, locale)}
           </p>
         )}
       </div>
@@ -203,9 +203,9 @@ async function Goal({ params }: { params: PageProps<"/[locale]/goals/[slug]">["p
                   </div>
                   {group.description && <p className="text-sm text-pretty">{group.description}</p>}
                   <p className="text-muted-foreground text-xs">
-                    {format(t.groups.members, { count: group.member_count, max: group.max_size })} ·{" "}
+                    {format(t.groups.members, { count: group.member_count, max: group.max_size }, locale)} ·{" "}
                     {group.join_policy === "open" ? t.groups.policy.open : t.groups.policy.request}
-                    {group.owner_display_name && <> · {format(t.groups.by, { name: group.owner_display_name })}</>}
+                    {group.owner_display_name && <> · {format(t.groups.by, { name: group.owner_display_name }, locale)}</>}
                   </p>
                   {group.is_member ? (
                     <Button asChild size="sm" variant="outline" className="self-start">

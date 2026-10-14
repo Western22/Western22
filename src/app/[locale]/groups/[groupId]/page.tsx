@@ -116,7 +116,7 @@ async function Group({
           <Link href={`/${locale}/goals/${ctx.goalSlug}`} className="hover:underline">
             {ctx.goalTitle}
           </Link>{" "}
-          · {format(g.members, { count: group.member_count, max: group.max_size })}
+          · {format(g.members, { count: group.member_count, max: group.max_size }, locale)}
         </p>
         {group.description && <p className="text-sm text-pretty">{group.description}</p>}
         {!ctx.isOwner && (
