@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PRIVATE_PAGE } from "@/lib/seo";
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { getMyProfile } from "@/lib/auth";
@@ -10,7 +11,7 @@ import { OnboardingFlow } from "./onboarding-flow";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/welcome">): Promise<Metadata> {
   const { locale } = await params;
-  return isLocale(locale) ? { title: (await getMessages(locale)).onboarding.you.eyebrow } : {};
+  return isLocale(locale) ? { ...PRIVATE_PAGE, title: (await getMessages(locale)).onboarding.you.eyebrow } : {};
 }
 
 /** Onboarding. Everything here depends on the session, so it renders at request time. */

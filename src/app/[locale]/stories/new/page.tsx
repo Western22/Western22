@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PRIVATE_PAGE } from "@/lib/seo";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { requireOnboardedProfile } from "@/lib/auth";
@@ -12,7 +13,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/stories/new">): Promise<Metadata> {
   const { locale } = await params;
-  return isLocale(locale) ? { title: (await getMessages(locale)).stories.newTitle } : {};
+  return isLocale(locale) ? { ...PRIVATE_PAGE, title: (await getMessages(locale)).stories.newTitle } : {};
 }
 
 /** Share a story about a goal: /stories/new?goal=<slug>[&group=<id>]. */

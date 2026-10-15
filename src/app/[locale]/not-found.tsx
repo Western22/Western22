@@ -9,7 +9,7 @@ export default function NotFound() {
   const locale = useLocale();
   return (
     <div className="flex flex-col items-start gap-2">
-      <p className="text-muted-foreground">{t("message")}</p>
+      <h1 className="text-xl font-semibold">{t("message")}</h1>
       <Link href={`/${locale}`} className="text-primary text-sm font-medium hover:underline">
         {t("home")}
       </Link>

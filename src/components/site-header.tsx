@@ -17,7 +17,7 @@ import type { Messages } from "@/i18n/messages/en";
 export function SiteHeader({ locale, t }: { locale: Locale; t: Messages }) {
   return (
     <header className="border-b">
-      <nav className="mx-auto flex h-14 max-w-3xl items-center gap-1 px-4 sm:gap-2 [&_[data-slot=button]]:px-2 sm:[&_[data-slot=button]]:px-3">
+      <nav aria-label={t.nav.main} className="mx-auto flex h-14 max-w-3xl items-center gap-1 px-4 sm:gap-2 [&_[data-slot=button]]:px-2 sm:[&_[data-slot=button]]:px-3">
         <Link href={`/${locale}`} className="me-auto font-semibold tracking-tight">
           {t.app.name}
         </Link>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PRIVATE_PAGE } from "@/lib/seo";
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -11,7 +12,7 @@ import { format } from "@/i18n/format";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/groups">): Promise<Metadata> {
   const { locale } = await params;
-  return isLocale(locale) ? { title: (await getMessages(locale)).groups.myGroups } : {};
+  return isLocale(locale) ? { ...PRIVATE_PAGE, title: (await getMessages(locale)).groups.myGroups } : {};
 }
 
 /** The caller's groups, with unread messages, story prompts and join requests. */

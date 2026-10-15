@@ -12,6 +12,8 @@ const en = {
     tagline: "Share your bucket list. Find people to do it with.",
   },
   nav: {
+    main: "Main",
+    skipToContent: "Skip to content",
     explore: "Explore",
     myList: "My list",
     profile: "Profile",
@@ -861,12 +863,21 @@ const en = {
     },
   },
   footer: {
+    label: "About and safety",
     guidelines: "Community guidelines",
     safety: "Safety tips",
   },
   common: {
     loading: "Loading…",
     osmCredit: "City lookup © OpenStreetMap contributors",
+  },
+  seo: {
+    goalKicker: "On people's bucket lists",
+    wanted: "{count, plural, =0 {Be the first to add it} one {# person wants to do this} other {# people want to do this}}",
+    goalDescription: "{title}: {count, plural, =0 {add it to your bucket list} one {# person wants to do this} other {# people want to do this}}. Find someone to do it with.",
+    storyKicker: "A bucket-list story",
+    storyBy: "Shared by {name}",
+    storyTitle: "{goal}: a story by {name}",
   },
   errorPage: {
     message: "Something went wrong. Please try again.",

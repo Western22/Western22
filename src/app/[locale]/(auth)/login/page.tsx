@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PRIVATE_PAGE } from "@/lib/seo";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/config";
@@ -8,7 +9,7 @@ import { SignInForm } from "./sign-in-form";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/login">): Promise<Metadata> {
   const { locale } = await params;
-  return isLocale(locale) ? { title: (await getMessages(locale)).nav.signIn } : {};
+  return isLocale(locale) ? { ...PRIVATE_PAGE, title: (await getMessages(locale)).nav.signIn } : {};
 }
 
 /** Passwordless sign-in and sign-up: magic link, Google, Apple. */

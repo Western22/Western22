@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PRIVATE_PAGE } from "@/lib/seo";
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -13,7 +14,7 @@ import { RespondButtons } from "./respond-buttons";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/requests">): Promise<Metadata> {
   const { locale } = await params;
-  return isLocale(locale) ? { title: (await getMessages(locale)).requests.title } : {};
+  return isLocale(locale) ? { ...PRIVATE_PAGE, title: (await getMessages(locale)).requests.title } : {};
 }
 
 /** "Let's do this together" requests: waiting for you, sent, and accepted. */
@@ -96,7 +97,7 @@ function RequestCard({ q, locale, t }: { q: MatchRequest; locale: Locale; t: Mes
       <div className="flex items-center gap-3">
         {q.other_avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element -- user upload from Supabase Storage
-          <img src={q.other_avatar_url} alt="" className="size-10 shrink-0 rounded-full object-cover" />
+          <img src={q.other_avatar_url} alt="" width={40} height={40} loading="lazy" className="size-10 shrink-0 rounded-full object-cover" />
         ) : (
           <div aria-hidden className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-full font-semibold">
             {name.replace("@", "").charAt(0).toUpperCase()}

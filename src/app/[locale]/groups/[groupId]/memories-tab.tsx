@@ -59,7 +59,7 @@ export async function MemoriesTab({ ctx, locale, t }: { ctx: GroupContext; local
             {urls.map((url) => (
               <li key={url}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL from private storage */}
-                <img src={url} alt="" className="aspect-square w-full rounded-lg object-cover" />
+                <img src={url} alt="" width={400} height={400} loading="lazy" className="aspect-square w-full rounded-lg object-cover" />
               </li>
             ))}
           </ul>

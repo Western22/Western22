@@ -49,7 +49,7 @@ export function GoalArt({
 }) {
   if (photoUrl) {
     // eslint-disable-next-line @next/next/no-img-element -- remote photo with a credit line; no image optimizer configured
-    return <img src={photoUrl} alt="" className={cn("object-cover", className)} />;
+    return <img src={photoUrl} alt="" width={1200} height={630} className={cn("object-cover", className)} />;
   }
   return (
     <div aria-hidden className={cn("flex items-center justify-center bg-gradient-to-br", CATEGORY_GRADIENT[category], className)}>

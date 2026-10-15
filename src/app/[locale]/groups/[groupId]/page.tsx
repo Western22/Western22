@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PRIVATE_PAGE } from "@/lib/seo";
 import { ReportButton } from "@/components/safety/report-button";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -42,7 +43,7 @@ export async function generateMetadata({ params }: PageProps<"/[locale]/groups/[
   if (!UUID_RE.test(groupId)) return {};
   const supabase = await createClient();
   const { data } = await supabase.from("groups").select("name").eq("id", groupId).maybeSingle();
-  return data ? { title: data.name } : {};
+  return data ? { ...PRIVATE_PAGE, title: data.name } : {};
 }
 
 /** The group space: Chat, Plan, Members and Memories, for members only. */

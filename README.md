@@ -65,6 +65,14 @@ and rate-limited); budgets shown in each person's currency (European Central
 Bank daily rates) and distances in km or miles; a "Language and region" section
 in Settings; layouts ready for right-to-left languages (see `docs/increment-9-global.md`).
 
+**Increment 10 (launch prep):** public goal and story pages are indexable with
+share images, a sitemap and robots.txt (search engines allowed only where
+`ALLOW_INDEXING=true`); accessibility fixes (skip link, labelled menus, one
+heading per page; no WCAG AA issues found by axe); Sentry error monitoring with
+personal data stripped; a demo-data script (`npm run seed:demo`); Vercel
+staging/production setup, a nightly encrypted backup workflow and a launch
+checklist (see `docs/increment-10-launch.md`, `docs/deploy.md`, `docs/launch-checklist.md`).
+
 Every table has Row Level Security.
 
 ## Stack
@@ -113,6 +121,9 @@ Group chat needs the Realtime service: don't exclude `realtime` when running
 `npx supabase start -x ...` (hosted projects have it on).
 
 ## Deploying to a hosted Supabase project
+
+Full Vercel staging and production setup, every environment variable, backups and
+releases: `docs/deploy.md`. Before going live, work through `docs/launch-checklist.md`.
 
 1. `npx supabase link --project-ref <ref>` then `npx supabase db push` to apply migrations.
 2. In Auth > URL Configuration, set the Site URL and add `https://<your-domain>/auth/confirm` as a redirect URL.

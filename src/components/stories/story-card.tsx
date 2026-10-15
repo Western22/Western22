@@ -45,7 +45,7 @@ export async function StoryCard({
       <header className="flex items-center gap-3 px-4 pt-3">
         {story.author_avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element -- user upload from Supabase Storage
-          <img src={story.author_avatar_url} alt="" className="size-10 shrink-0 rounded-full object-cover" />
+          <img src={story.author_avatar_url} alt="" width={40} height={40} loading="lazy" className="size-10 shrink-0 rounded-full object-cover" />
         ) : (
           <div aria-hidden className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-full font-semibold">
             {name.replace("@", "").charAt(0).toUpperCase()}
@@ -92,6 +92,10 @@ export async function StoryCard({
               key={url}
               src={url}
               alt=""
+              width={800}
+              height={800}
+              loading="lazy"
+              decoding="async"
               className={cn(
                 "w-full object-cover",
                 story.photo_urls.length === 1 ? "max-h-96" : "aspect-square",

@@ -1,0 +1,61 @@
+# Nightly encrypted database backup (free; runs on GitHub Actions).
+#
+# Off until you add two repository secrets (Settings > Secrets and variables > Actions):
+#   PRODUCTION_DB_URL   Supabase > Project Settings > Database > Connection string (session pooler, URI)
+#   BACKUP_PASSPHRASE   a long random passphrase; store it in your password manager too
+#
+# Each run uploads one encrypted dump as a workflow artifact, kept for 30 days.
+# Restore: see docs/deploy.md, "Backups".
+name: Database backup
+
+on:
+  schedule:
+    - cron: "15 3 * * *" # 03:15 UTC daily
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      PRODUCTION_DB_URL: ${{ secrets.PRODUCTION_DB_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - name: Skip when secrets are not set
+        id: check
+        run: |
+          if [ -z "$PRODUCTION_DB_URL" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "Backup secrets are not set; skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Postgres 17 client
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Dump and encrypt
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          stamp=$(date -u +%Y-%m-%dT%H%MZ)
+          /usr/lib/postgresql/17/bin/pg_dump "$PRODUCTION_DB_URL" \
+            --format=custom --no-owner --no-privileges \
+            --schema=public --schema=auth --schema=storage \
+            --file=backup.dump
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+            --symmetric --cipher-algo AES256 --output "db-$stamp.dump.gpg" backup.dump
+          rm backup.dump
+          echo "BACKUP_FILE=db-$stamp.dump.gpg" >> "$GITHUB_ENV"
+
+      - name: Upload encrypted dump
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BACKUP_FILE }}
+          path: ${{ env.BACKUP_FILE }}
+          retention-days: 30
+          if-no-files-found: error

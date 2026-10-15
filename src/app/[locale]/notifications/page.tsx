@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PRIVATE_PAGE } from "@/lib/seo";
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -19,7 +20,7 @@ function requestTime(): number {
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/notifications">): Promise<Metadata> {
   const { locale } = await params;
-  return isLocale(locale) ? { title: (await getMessages(locale)).notifications.title } : {};
+  return isLocale(locale) ? { ...PRIVATE_PAGE, title: (await getMessages(locale)).notifications.title } : {};
 }
 
 /** Notification center: newest first, 30 at a time ("Show older" pages back). */

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
+import { Suspense, cache } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CalendarDays, Check, MapPin, MessageSquareText, UserRoundSearch, UsersRound } from "lucide-react";
@@ -8,7 +8,8 @@ import { GoalArt } from "@/components/goal-art";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatMonths } from "@/lib/months";
-import { isLocale } from "@/i18n/config";
+import { isLocale, type Locale } from "@/i18n/config";
+import type { Messages } from "@/i18n/messages/en";
 import { getMessages } from "@/i18n/get-messages";
 import { format } from "@/i18n/format";
 import { AddGoalButton } from "./add-goal-button";
@@ -16,15 +17,50 @@ import { JoinGroupButton } from "@/components/groups/join-group-button";
 import { CreateGroupForm } from "@/components/groups/create-group-form";
 import { StoryCard } from "@/components/stories/story-card";
 import { loadStoryCards } from "@/lib/stories";
+import { excerpt, localizedAlternates, publicSupabase } from "@/lib/seo";
+import { cacheLife } from "next/cache";
 
 const SLUG_RE = /^[a-z0-9-]{3,90}$/;
+
+/**
+ * The public view of a goal, cached for a few minutes so goal pages (the
+ * pages people find through search and shares) paint fast. It's read
+ * anonymously, so `my_item_id` is always null here; per-person parts stream
+ * in separately. Pending goals aren't public, so their creator falls back to
+ * an uncached read with their own session.
+ */
+async function getPublicGoal(slug: string, locale: Locale) {
+  "use cache";
+  cacheLife("minutes");
+  const { data, error } = await publicSupabase().rpc("goal_details", { p_slug: slug, p_locale: locale });
+  if (error) throw new Error("Could not load goal");
+  return data[0] ?? null;
+}
+
+async function loadGoal(slug: string, locale: Locale) {
+  const goal = await getPublicGoal(slug, locale);
+  if (goal) return goal;
+  const { data } = await (await createClient()).rpc("goal_details", { p_slug: slug, p_locale: locale });
+  return data?.[0] ?? null;
+}
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/goals/[slug]">): Promise<Metadata> {
   const { locale, slug } = await params;
   if (!isLocale(locale) || !SLUG_RE.test(slug)) return {};
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("goal_details", { p_slug: slug, p_locale: locale });
-  return data?.[0] ? { title: data[0].title, description: data[0].description ?? undefined } : {};
+  const goal = await loadGoal(slug, locale);
+  if (!goal) return {};
+  const t = await getMessages(locale);
+  const description = goal.description
+    ? excerpt(goal.description)
+    : format(t.seo.goalDescription, { title: goal.title, count: goal.wanted_count }, locale);
+  // The share image comes from ./opengraph-image.tsx.
+  return {
+    title: goal.title,
+    description,
+    alternates: localizedAlternates(locale, `/goals/${goal.slug}`),
+    openGraph: { title: goal.title, description, type: "article", url: `/${locale}/goals/${goal.slug}` },
+    twitter: { title: goal.title, description },
+  };
 }
 
 /** A canonical goal: what it is, who wants it, and (soon) stories and groups. */
@@ -49,27 +85,9 @@ async function Goal({ params }: { params: PageProps<"/[locale]/goals/[slug]">["p
   if (!isLocale(locale) || !SLUG_RE.test(slug)) notFound();
   const t = await getMessages(locale);
 
-  const supabase = await createClient();
-  const [{ data, error }, user] = await Promise.all([
-    supabase.rpc("goal_details", { p_slug: slug, p_locale: locale }),
-    getCurrentUser(),
-  ]);
-  if (error) throw new Error("Could not load goal");
-  const goal = data[0];
+  const goal = await loadGoal(slug, locale);
   if (!goal) notFound();
   if (goal.status === "merged" && goal.merged_into_slug) redirect(`/${locale}/goals/${goal.merged_into_slug}`);
-
-  const [{ data: groupRows }, { data: storyRows }] = await Promise.all([
-    supabase.rpc("goal_groups", { p_goal_id: goal.goal_id }),
-    supabase.from("stories").select("id").eq("goal_id", goal.goal_id).order("created_at", { ascending: false }).limit(10),
-  ]);
-  const groups = groupRows ?? [];
-  const [stories, myItem] = await Promise.all([
-    loadStoryCards(supabase, (storyRows ?? []).map((r) => r.id), locale),
-    goal.my_item_id
-      ? supabase.from("bucket_items").select("status").eq("id", goal.my_item_id).maybeSingle().then((r) => r.data)
-      : null,
-  ]);
 
   const g = t.goal;
   const place = [goal.place_name, goal.place_country ? countryName(goal.place_country, locale) : null]
@@ -125,8 +143,46 @@ async function Goal({ params }: { params: PageProps<"/[locale]/goals/[slug]">["p
         <span className="font-medium">{g.bestTime}:</span> {months || g.anyTime}
       </p>
 
+      <Suspense fallback={<div aria-hidden className="h-10" />}>
+        <GoalActions goal={goal} locale={locale} t={t} />
+      </Suspense>
+
+      {/* Stories and groups stream in after the goal itself, so the title paints first (LCP). */}
+      <Suspense fallback={<div aria-hidden className="bg-muted/60 h-40 animate-pulse rounded-2xl" />}>
+        <GoalStories goal={goal} locale={locale} t={t} />
+      </Suspense>
+      <Suspense fallback={<div aria-hidden className="bg-muted/60 h-40 animate-pulse rounded-2xl" />}>
+        <GoalGroups goal={goal} locale={locale} t={t} />
+      </Suspense>
+    </article>
+  );
+}
+
+type GoalRow = { goal_id: string; slug: string; title: string; status: string };
+
+/** The viewer and their own item for this goal (if any). Per person: deduped per request, never cached across requests. */
+const viewerAndItem = cache(async (goalId: string) => {
+  const user = await getCurrentUser();
+  if (!user) return { user: null, item: null };
+  const { data: item } = await (await createClient())
+    .from("bucket_items")
+    .select("id, status")
+    .eq("owner_id", user.id)
+    .eq("goal_id", goalId)
+    .order("created_at")
+    .limit(1)
+    .maybeSingle();
+  return { user, item };
+});
+
+/** "On your list" / "Find buddies", "Add to my list", or "Sign in to add". */
+async function GoalActions({ goal, locale, t }: { goal: GoalRow; locale: Locale; t: Messages }) {
+  const g = t.goal;
+  const { user, item } = await viewerAndItem(goal.goal_id);
+  const myItemId = item?.id ?? null;
+  return (
       <div className="flex flex-wrap gap-2">
-        {goal.my_item_id ? (
+        {myItemId ? (
           <>
             <Button asChild size="lg" variant="outline">
               <Link href={`/${locale}/items`}>
@@ -136,7 +192,7 @@ async function Goal({ params }: { params: PageProps<"/[locale]/goals/[slug]">["p
             </Button>
             {goal.status === "active" && (
               <Button asChild size="lg">
-                <Link href={`/${locale}/items/${goal.my_item_id}/matches`}>
+                <Link href={`/${locale}/items/${myItemId}/matches`}>
                   <UserRoundSearch aria-hidden />
                   {g.findBuddies}
                 </Link>
@@ -151,7 +207,19 @@ async function Goal({ params }: { params: PageProps<"/[locale]/goals/[slug]">["p
           </Button>
         )}
       </div>
+  );
+}
 
+async function GoalStories({ goal, locale, t }: { goal: GoalRow; locale: Locale; t: Messages }) {
+  const supabase = await createClient();
+  const g = t.goal;
+  const [{ data: storyRows }, { user, item: myItem }] = await Promise.all([
+    supabase.from("stories").select("id").eq("goal_id", goal.goal_id).order("created_at", { ascending: false }).limit(10),
+    viewerAndItem(goal.goal_id),
+  ]);
+  const userId = user?.id ?? null;
+  const stories = await loadStoryCards(supabase, (storyRows ?? []).map((r) => r.id), locale);
+  return (
       <section className="flex flex-col gap-2">
         <h2 className="flex items-center gap-2 text-lg font-semibold">
           <MessageSquareText className="size-5" aria-hidden />
@@ -169,13 +237,23 @@ async function Goal({ params }: { params: PageProps<"/[locale]/goals/[slug]">["p
           <ul className="flex flex-col gap-4">
             {stories.map((story) => (
               <li key={story.id}>
-                <StoryCard story={story} locale={locale} t={t} viewerId={user?.id ?? null} />
+                <StoryCard story={story} locale={locale} t={t} viewerId={userId} />
               </li>
             ))}
           </ul>
         )}
       </section>
 
+  );
+}
+
+async function GoalGroups({ goal, locale, t }: { goal: GoalRow; locale: Locale; t: Messages }) {
+  const supabase = await createClient();
+  const g = t.goal;
+  const [{ data: groupRows }, user] = await Promise.all([supabase.rpc("goal_groups", { p_goal_id: goal.goal_id }), getCurrentUser()]);
+  const signedIn = Boolean(user);
+  const groups = groupRows ?? [];
+  return (
       <section id="groups" className="flex scroll-mt-4 flex-col gap-3">
         <h2 className="flex items-center gap-2 text-lg font-semibold">
           <UsersRound className="size-5" aria-hidden />
@@ -211,7 +289,7 @@ async function Goal({ params }: { params: PageProps<"/[locale]/goals/[slug]">["p
                     <Button asChild size="sm" variant="outline" className="self-start">
                       <Link href={`/${locale}/groups/${group.id}`}>{t.groups.openGroup}</Link>
                     </Button>
-                  ) : group.status === "completed" ? null : !user ? (
+                  ) : group.status === "completed" ? null : !signedIn ? (
                     <Button asChild size="sm" variant="outline" className="self-start">
                       <Link href={`/${locale}/login`}>{g.signInToAdd}</Link>
                     </Button>
@@ -231,7 +309,7 @@ async function Goal({ params }: { params: PageProps<"/[locale]/goals/[slug]">["p
             })}
           </ul>
         )}
-        {user && goal.status === "active" && (
+        {signedIn && goal.status === "active" && (
           <details className="group rounded-2xl border p-4">
             <summary className="cursor-pointer list-none font-medium">
               {t.groups.start}
@@ -243,6 +321,5 @@ async function Goal({ params }: { params: PageProps<"/[locale]/goals/[slug]">["p
           </details>
         )}
       </section>
-    </article>
   );
 }

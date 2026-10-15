@@ -68,7 +68,7 @@ export async function MembersTab({ ctx, locale, t }: { ctx: GroupContext; locale
               <li key={member.user_id} className="flex items-center gap-3 rounded-xl border p-3">
                 {member.profile?.avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element -- user upload from Supabase Storage
-                  <img src={member.profile.avatar_url} alt="" className="size-10 rounded-full object-cover" />
+                  <img src={member.profile.avatar_url} alt="" width={40} height={40} loading="lazy" className="size-10 rounded-full object-cover" />
                 ) : (
                   <div aria-hidden className="bg-muted flex size-10 items-center justify-center rounded-full font-semibold">
                     {name.replace("@", "").charAt(0).toUpperCase()}

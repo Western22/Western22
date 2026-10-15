@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PRIVATE_PAGE } from "@/lib/seo";
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -12,7 +13,7 @@ import { LocationCard } from "./location-card";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/profile">): Promise<Metadata> {
   const { locale } = await params;
-  return isLocale(locale) ? { title: (await getMessages(locale)).profile.title } : {};
+  return isLocale(locale) ? { ...PRIVATE_PAGE, title: (await getMessages(locale)).profile.title } : {};
 }
 
 export default async function ProfilePage({ params }: PageProps<"/[locale]/profile">) {

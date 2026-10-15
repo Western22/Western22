@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PRIVATE_PAGE } from "@/lib/seo";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { requireOnboardedProfile } from "@/lib/auth";
@@ -13,7 +14,7 @@ import { budgetLabels } from "@/lib/region";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/items">): Promise<Metadata> {
   const { locale } = await params;
-  return isLocale(locale) ? { title: (await getMessages(locale)).items.title } : {};
+  return isLocale(locale) ? { ...PRIVATE_PAGE, title: (await getMessages(locale)).items.title } : {};
 }
 
 export default async function ItemsPage({ params }: PageProps<"/[locale]/items">) {

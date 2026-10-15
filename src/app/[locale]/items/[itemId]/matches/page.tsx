@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PRIVATE_PAGE } from "@/lib/seo";
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -20,7 +21,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/items/[itemId]/matches">): Promise<Metadata> {
   const { locale } = await params;
-  return isLocale(locale) ? { title: (await getMessages(locale)).matches.findBuddies } : {};
+  return isLocale(locale) ? { ...PRIVATE_PAGE, title: (await getMessages(locale)).matches.findBuddies } : {};
 }
 
 /** Ranked buddies for one of the caller's items. Everything depends on the session, so it streams. */
@@ -126,7 +127,7 @@ function MatchCard({
       <div className="flex items-center gap-3">
         {match.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element -- user upload from Supabase Storage
-          <img src={match.avatar_url} alt="" className="size-12 shrink-0 rounded-full object-cover" />
+          <img src={match.avatar_url} alt="" width={48} height={48} loading="lazy" className="size-12 shrink-0 rounded-full object-cover" />
         ) : (
           <div aria-hidden className="bg-muted flex size-12 shrink-0 items-center justify-center rounded-full text-lg font-semibold">
             {name.replace("@", "").charAt(0).toUpperCase()}

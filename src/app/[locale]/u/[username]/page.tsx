@@ -22,7 +22,8 @@ import { FollowButton } from "./follow-button";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/u/[username]">): Promise<Metadata> {
   const { username } = await params;
-  return { title: `@${username}` };
+  // Profiles stay out of search results (privacy); people are found through their stories.
+  return { title: `@${username}`, robots: { index: false, follow: true } };
 }
 
 /**
@@ -95,7 +96,7 @@ async function PublicProfile({ params }: { params: PageProps<"/[locale]/u/[usern
       <section className="from-primary/15 via-accent to-background flex flex-col items-center gap-3 rounded-3xl bg-gradient-to-br p-6 text-center">
         {profile.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element -- user upload from Supabase Storage
-          <img src={profile.avatar_url} alt="" className="border-background size-24 rounded-full border-4 object-cover shadow-md" />
+          <img src={profile.avatar_url} alt="" width={96} height={96} className="border-background size-24 rounded-full border-4 object-cover shadow-md" />
         ) : (
           <div aria-hidden className="bg-background flex size-24 items-center justify-center rounded-full border-4 text-4xl shadow-md">
             {name.replace("@", "").charAt(0).toUpperCase()}

@@ -9,6 +9,7 @@ import { isLocale, localeDirection, locales } from "@/i18n/config";
 import { NextIntlClientProvider } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { getMessages } from "@/i18n/get-messages";
+import { isIndexable, siteUrl } from "@/lib/seo";
 import "../globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -23,7 +24,16 @@ export async function generateMetadata({ params }: LayoutProps<"/[locale]">): Pr
   const { locale } = await params;
   if (!isLocale(locale)) return {};
   const t = await getMessages(locale);
-  return { title: { default: t.app.name, template: `%s · ${t.app.name}` }, description: t.app.tagline };
+  return {
+    metadataBase: new URL(siteUrl()),
+    title: { default: t.app.name, template: `%s · ${t.app.name}` },
+    description: t.app.tagline,
+    applicationName: t.app.name,
+    openGraph: { siteName: t.app.name, locale, type: "website" },
+    twitter: { card: "summary_large_image" },
+    // Staging and previews are never indexed; production opts in (lib/seo.ts).
+    robots: isIndexable() ? undefined : { index: false, follow: false },
+  };
 }
 
 /** Root layout. The locale segment sets <html lang> and loads messages. */
@@ -40,13 +50,20 @@ export default async function LocaleLayout({ children, params }: LayoutProps<"/[
     <html lang={locale} dir={localeDirection(locale)} className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <NextIntlClientProvider locale={locale} messages={clientMessages} timeZone="UTC">
+        {/* WCAG 2.4.1: keyboard users can jump past the header. */}
+        <a
+          href="#main"
+          className="bg-background text-foreground sr-only z-50 rounded-md px-3 py-2 font-medium shadow focus:not-sr-only focus:fixed focus:start-2 focus:top-2"
+        >
+          {t.nav.skipToContent}
+        </a>
         <SiteHeader locale={locale} t={t} />
         <Suspense fallback={null}>
           <AccountNotices locale={locale} t={t} />
         </Suspense>
-        <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">{children}</main>
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 outline-none">{children}</main>
         <footer className="border-t">
-          <nav className="text-muted-foreground mx-auto flex max-w-3xl flex-wrap gap-x-4 gap-y-1 px-4 py-4 text-sm">
+          <nav aria-label={t.footer.label} className="text-muted-foreground mx-auto flex max-w-3xl flex-wrap gap-x-4 gap-y-1 px-4 py-4 text-sm">
             <Link href={`/${locale}/guidelines`} className="hover:underline">
               {t.footer.guidelines}
             </Link>

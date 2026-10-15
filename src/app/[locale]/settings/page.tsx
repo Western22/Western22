@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PRIVATE_PAGE } from "@/lib/seo";
 import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
@@ -22,7 +23,7 @@ import { PushToggle } from "@/components/notifications/push-toggle";
 export async function generateMetadata({ params }: PageProps<"/[locale]/settings">): Promise<Metadata> {
   const { locale } = await params;
   if (!isLocale(locale)) return {};
-  return { title: (await getMessages(locale)).settings.title };
+  return { ...PRIVATE_PAGE, title: (await getMessages(locale)).settings.title };
 }
 
 export default async function SettingsPage({ params }: PageProps<"/[locale]/settings">) {

@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { loadStoryCards } from "@/lib/stories";
+import { excerpt, localizedAlternates } from "@/lib/seo";
+import { format } from "@/i18n/format";
 import { isLocale } from "@/i18n/config";
 import { getMessages } from "@/i18n/get-messages";
 import { StoryCard } from "@/components/stories/story-card";
@@ -20,7 +22,20 @@ export async function generateMetadata({ params }: PageProps<"/[locale]/stories/
   if (!isLocale(locale) || !UUID_RE.test(storyId)) return {};
   const supabase = await createClient();
   const [story] = await loadStoryCards(supabase, [storyId], locale);
-  return story ? { title: story.goal_title, description: story.body.slice(0, 160) } : {};
+  if (!story) return {};
+  const t = await getMessages(locale);
+  const name = story.author_display_name || `@${story.author_username ?? "?"}`;
+  const title = format(t.seo.storyTitle, { goal: story.goal_title, name }, locale);
+  const description = excerpt(story.body);
+  // A story's own first photo makes the best share image; otherwise ./opengraph-image.tsx draws one.
+  const images = story.photo_urls[0] ? [{ url: story.photo_urls[0], alt: story.goal_title }] : undefined;
+  return {
+    title,
+    description,
+    alternates: localizedAlternates(locale, `/stories/${story.id}`),
+    openGraph: { title, description, type: "article", url: `/${locale}/stories/${story.id}`, publishedTime: story.created_at, ...(images && { images }) },
+    twitter: { title, description, ...(images && { images }) },
+  };
 }
 
 /** One story with its comments. Public, so it can be shared. */
@@ -57,6 +72,8 @@ async function Story({ params }: { params: PageProps<"/[locale]/stories/[storyId
 
   return (
     <div className="flex flex-col gap-5 pb-10">
+      {/* The card's goal chip is the visible title; this names the page for screen readers. */}
+      <h1 className="sr-only">{format(t.seo.storyTitle, { goal: story.goal_title, name: story.author_display_name || `@${story.author_username ?? "?"}` }, locale)}</h1>
       <StoryCard story={story} locale={locale} t={t} viewerId={user?.id ?? null} linkToStory={false} />
       {myTag && <UntagButton storyId={story.id} label={s.untag} />}
 
