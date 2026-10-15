@@ -7,7 +7,6 @@ Work top to bottom. Setup details are in `docs/deploy.md`.
 - [ ] Vercel plan: Hobby is non-commercial only; Pro is paid.
 - [ ] Supabase plan for production: Free (pauses when idle, no automatic backups) or Pro (paid).
 - [ ] Final app name and domain (replace "Buddies", `app.name` in `src/i18n/messages/en.ts`).
-- [ ] Analytics tool for the signup-to-story funnel.
 
 ## Accounts and settings
 
@@ -56,6 +55,7 @@ Work top to bottom. Setup details are in `docs/deploy.md`.
 
 ## After launch
 
+- [ ] Check the Growth funnel (`/en/admin/funnel`) weekly to see where people drop off.
 - [ ] Watch Sentry for new errors in the first days.
 - [ ] Check the backup artifact appears each night.
 - [ ] Check the Resend dashboard for bounces and spam complaints.

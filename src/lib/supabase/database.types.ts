@@ -832,6 +832,10 @@ export type Database = {
         Returns: undefined;
       };
       flag_my_content: { Args: { p_target_type: ReportTargetType; p_target_id: string; p_categories: string[] }; Returns: undefined };
+      funnel_report: {
+        Args: { p_from: string; p_to: string };
+        Returns: { step: FunnelStep; step_order: number; people: number }[];
+      };
       moderation_queue: {
         Args: { p_status?: ReportStatus; p_limit?: number };
         Returns: {
@@ -977,3 +981,6 @@ export type NotificationDeliveryRow = {
   data: { starts_on?: string; days?: number } & Partial<DigestData>;
   push_subscriptions: { endpoint: string; p256dh: string; auth: string }[] | null;
 };
+
+/** Funnel steps recorded by migration 0012 (first time each person reaches them). */
+export type FunnelStep = "signup" | "first_item" | "first_match_request" | "group_joined" | "goal_completed" | "story_posted";

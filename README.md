@@ -69,7 +69,8 @@ in Settings; layouts ready for right-to-left languages (see `docs/increment-9-gl
 share images, a sitemap and robots.txt (search engines allowed only where
 `ALLOW_INDEXING=true`); accessibility fixes (skip link, labelled menus, one
 heading per page; no WCAG AA issues found by axe); Sentry error monitoring with
-personal data stripped; a demo-data script (`npm run seed:demo`); Vercel
+personal data stripped; funnel analytics in our own database with a moderators-only
+Growth funnel page (`/en/admin/funnel`); a demo-data script (`npm run seed:demo`); Vercel
 staging/production setup, a nightly encrypted backup workflow and a launch
 checklist (see `docs/increment-10-launch.md`, `docs/deploy.md`, `docs/launch-checklist.md`).
 
@@ -112,7 +113,7 @@ recorded on the profile when the OAuth callback lands in `/auth/confirm`.
 ```bash
 npx tsc --noEmit && npm run lint && npm run build
 npx supabase db reset       # the RLS test expects an empty database
-supabase/tests/run_all.sh   # rls, matching, groups, social, trust_safety, notifications, localization
+supabase/tests/run_all.sh   # rls, matching, groups, social, trust_safety, notifications, localization, analytics
 ```
 
 Each test runs in a transaction, rolls back, and prints `ALL ... CHECKS PASSED`;

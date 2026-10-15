@@ -45,6 +45,14 @@ Accessibility and best practices are 100 on all of them. The goal page varies be
 - Safe to run twice (adds nothing the second time). `npm run seed:demo -- --remove` deletes all of it.
 - It refuses a non-local database unless you add `--yes`.
 
+## Funnel analytics (own database)
+
+- Six steps, each recorded **once per person, the first time**: signed up → first bucket-list item → first match request → joined a group → completed a goal → posted a story.
+- **Recorded by the database itself** (triggers in migration 0012), so every path counts, nothing extra loads in the browser, and nobody can fake an event. Existing activity was backfilled when the migration ran.
+- **Private by design:** only the person's id, the step and the time are stored. No content, location, email, device or cookies, and no third-party tracker, so no cookie banner is needed for it. Rows are deleted with the account. Demo accounts are never counted.
+- **Growth funnel page** at `/en/admin/funnel` (moderators only; everyone else gets "not found"): of the people who signed up in the last 7, 30 or 90 days or all time, how many reached each step, as a share of signups and of the step before.
+- Raw rows are in `public.funnel_events` for moderators who want to export them with SQL.
+
 ## Deploying, backups, checklist
 
 - **`docs/deploy.md`**: Vercel production (`main`) and staging (`staging` branch) with separate Supabase projects, every environment variable, scheduled jobs, Sentry setup, backups and restoring, releasing and rolling back.
@@ -54,12 +62,11 @@ Accessibility and best practices are 100 on all of them. The goal page varies be
 
 ## Not done yet
 
-- **Funnel analytics** (signup → first item → first match request → group joined → goal completed → story posted): waiting on the choice of tool.
 - **Privacy policy and terms** pages: TODO, need the actual legal text.
 
 ## Migrations
 
-None in this increment.
+- `20261015000012_funnel_analytics.sql`: the funnel table, its triggers, a backfill and the report. Run `npx supabase db push` (hosted) or `npx supabase migration up` (local).
 
 ## What to test
 
@@ -67,4 +74,5 @@ None in this increment.
 2. Press Tab on any page: "Skip to content" appears; Enter moves to the main content.
 3. Open `/en/goals/climb-mount-kilimanjaro/opengraph-image` to see a share card.
 4. Run with `ALLOW_INDEXING=true` and check `/robots.txt` and `/sitemap.xml`; without it robots.txt says `Disallow: /`.
-5. With a Sentry DSN set, call the test-error endpoint (above) and check the error in Sentry has no email or cookie in it.
+5. Make yourself a moderator (`insert into public.moderators (user_id) values ('<your id>');`), add an item and send a request, then open `/en/admin/funnel`: your steps are counted; demo people are not.
+6. With a Sentry DSN set, call the test-error endpoint (above) and check the error in Sentry has no email or cookie in it.
